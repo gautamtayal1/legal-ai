@@ -1,0 +1,152 @@
+---
+alwaysApply: false
+---
+Think of your RAG pipeline as a **sophisticated legal research assistant** that has three main brains working together:
+
+### 1. **The Document Understanding Brain** (Backend Processing)
+
+This is where documents get "digested" and understood at a deep level:
+
+- **Structure Parser**: Reads legal documents and builds a map of how clauses relate to each other (like a family tree of legal sections)
+- **Definition Extractor**: Finds and catalogs all the special terms defined in the document
+- **Clause Chunker**: Breaks the document into meaningful pieces that preserve legal context
+- **Reference Mapper**: Tracks which clauses point to other clauses (like "see Section 5.2")
+
+### 2. **The Retrieval Brain** (Multi-Round Search Engine)
+
+This is the smart search system that finds relevant information:
+
+- **Round 1**: Does both semantic search (understanding meaning) and keyword search (finding exact terms)
+- **Round 2**: Follows the breadcrumbs - if a clause mentions "Section 5.2", it automatically fetches Section 5.2
+- **Round 3**: Looks up definitions for any special terms found
+- **Context Aggregator**: Assembles all the pieces into a complete picture
+
+### 3. **The Legal Analysis Brain** (Answer Generation)
+
+This ensures the answer is legally sound:
+
+- **Numerical Checker**: Spots conflicts (like one clause saying "30 days" and another saying "60 days")
+- **Obligation Analyzer**: Figures out who has to do what and under what conditions
+- **Citation Tracker**: Keeps track of exactly where each fact came from
+- **Answer Formatter**: Presents everything in a clear, cited format
+
+## Data Storage Strategy
+
+### **PostgreSQL (The Relationship Database)**
+
+This stores the "skeleton" of your documents:
+
+- Document metadata (who uploaded what, when)
+- Clause hierarchy (which sections contain which subsections)
+- Cross-references (Section A points to Section B)
+- Definitions index (term X means Y according to this document)
+- User query history and feedback
+
+### **Vector Database (The Meaning Database)**
+
+This stores the "understanding" of your documents:
+
+- Each clause converted to a mathematical representation of its meaning
+- Enables semantic search ("find clauses about termination" even if they don't use that exact word)
+- Metadata attached to each chunk for precise citation tracking
+
+### **Elasticsearch (The Keyword Database)**
+
+This stores the "exact word" search capability:
+
+- Full text of all clauses indexed for precise keyword matching
+- Catches legal terms that might be missed by semantic search
+- Especially good for finding specific defined terms or exact phrases
+
+## How the Components Work Together
+
+### **Document Ingestion Flow**
+
+1. **User uploads a contract** → FastAPI receives it
+2. **Structure Parser** reads it and says "this has 20 sections, here's how they're organized"
+3. **Definition Extractor** finds the definitions section and catalogs all special terms
+4. **Clause Chunker** splits it into meaningful pieces (keeping related content together)
+5. **All three databases get updated** with different aspects of the same document
+
+### **Query Processing Flow**
+
+1. **User asks a question** → FastAPI receives it
+2. **Query Processor** analyzes the question (is it about obligations? definitions? specific clauses?)
+3. **Multi-Round Retrieval** begins:
+    - First round: Search both vector DB (for meaning) and Elasticsearch (for keywords)
+    - Second round: If retrieved clauses mention other clauses, fetch those too
+    - Third round: If any special terms are found, fetch their definitions
+4. **Context Aggregator** assembles all the pieces
+5. **Legal Analysis** happens:
+    - Check for numerical conflicts
+    - Identify who has what obligations
+    - Track citation sources
+6. **Answer Generation** creates a response with proper citations
+7. **Frontend displays** the answer with clickable citations
+
+## Frontend Architecture
+
+### **Chat Interface**
+
+- Next.js 15 frontend 
+- Main conversation area where users ask questions
+- Displays answers with inline citations (like Wikipedia footnotes)
+- Shows "thinking process" (which clauses were retrieved, how many rounds) 
+
+### **Document Viewer**
+
+- Shows the actual document with highlighted sections
+- When you click a citation, it jumps to that exact clause
+- Side-by-side with chat for easy verification
+
+## Key Innovations for Legal Documents
+
+### **The Multi-Round Retrieval Magic**
+
+Instead of just searching once, the system is smart enough to:
+
+- Find a clause that says "subject to Section 5.2"
+- Automatically fetch Section 5.2 in the next round
+- Keep following these breadcrumbs until it has the complete picture
+
+### **The Definition Resolution System**
+
+- Automatically recognizes when a question uses defined terms
+- Fetches the exact definition from the document
+- Includes both the definition and how it's used in context
+
+### **The Citation Tracking System**
+
+- Every fact in the answer points back to a specific clause
+- Users can verify every claim by clicking to see the source
+- No "hallucinated" information - everything is grounded in the document
+
+### **The Hybrid Search Approach**
+
+- Semantic search finds clauses that mean the same thing (even with different words)
+- Keyword search finds exact legal terms that must match precisely
+- Together they catch both broad concepts and specific legal language
+
+## How It Solves Legal Document Problems
+
+### **Cross-Reference Problem**:
+
+The multi-round retrieval automatically follows clause references, so if Section 7 points to Section 9, both get included in the answer.
+
+### **Definition Problem**:
+
+The definition extractor builds a special index of all defined terms, which gets automatically consulted when those terms appear in questions or retrieved clauses.
+
+### **Numerical Consistency Problem**:
+
+The numerical checker scans all retrieved clauses for numbers and flags conflicts (like different deadlines for the same obligation).
+
+### **Obligation Scope Problem**:
+
+The obligation analyzer specifically looks for "who must do what" and "under what conditions" to ensure complete answers about responsibilities.
+
+### **Citation Problem**:
+
+Every piece of information is tracked back to its source clause, so users always know exactly where facts come from.
+
+This architecture essentially creates a **legal research assistant** that reads documents the way a lawyer would - following references, checking definitions, verifying consistency, and always citing sources - but does it automatically and instantly for any question.
