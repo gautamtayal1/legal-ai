@@ -14,3 +14,4 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     threads = relationship("Thread", back_populates="user")
+    messages = relationship("Message", back_populates="user", cascade="all, delete-orphan")

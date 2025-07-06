@@ -103,4 +103,5 @@ zstandard==0.23.0
 # PostgreSQL driver for Docker setup
 psycopg2-binary==2.9.10
 
-boto3==1.34.103 
+boto3==1.34.103
+svix==0.91.0 

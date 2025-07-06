@@ -1,6 +1,14 @@
 import { clerkMiddleware } from '@clerk/nextjs/server';
 
-export default clerkMiddleware();
+// Expose `/api/webhooks` so Svix/Clerk can post without auth
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error - older Clerk types may not include `publicRoutes`, but runtime supports it
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default clerkMiddleware((auth, req) => {
+  // No custom auth handling needed here
+}, {
+  publicRoutes: ['/api/webhooks(.*)'],
+});
 
 export const config = {
   matcher: [

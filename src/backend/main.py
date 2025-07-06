@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from api.routers import documents
+from api.routers import clerk_webhooks  # Register Clerk webhook router
 
 # Basic logging
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +26,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(documents.router, prefix="/api")
+# Public webhook route (no prefix)
+app.include_router(clerk_webhooks.router, prefix="/api")
 
 @app.get("/")
 async def root():
@@ -35,7 +38,8 @@ async def root():
         "endpoints": {
             "health": "/health",
             "docs": "/docs",
-            "documents": "/api/documents"
+            "documents": "/api/documents",
+            "clerk_webhook": "/webhooks"
         }
     }
 

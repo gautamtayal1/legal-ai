@@ -1,6 +1,6 @@
-import "../styles/globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ReactNode } from "react";
+import "./globals.css";
 
 export const metadata = {
   title: "Legal AI",
