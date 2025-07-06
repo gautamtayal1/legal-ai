@@ -1,4 +1,4 @@
-from models.document import Base
+from models import Base
 from core.database import engine
 import time
 
@@ -7,6 +7,9 @@ def init_database():
     try:
         Base.metadata.create_all(bind=engine)
         print("Database tables created successfully")
+        print("Tables created:")
+        for table in Base.metadata.tables.keys():
+            print(f"  - {table}")
     except Exception as e:
         print(f"Error creating database tables: {e}")
         raise
