@@ -11,11 +11,10 @@ class Document(Base):
     filename = Column(String, nullable=False)
     file_type = Column(String, nullable=False)
     file_size = Column(Integer, nullable=False)
-    message_id = Column(String, ForeignKey("messages.id"), nullable=False)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
+    thread_id = Column(String, ForeignKey("threads.id"), nullable=False)
     
     user = relationship("User")
-    message = relationship("Message", back_populates="documents")
-    
+    thread = relationship("Thread", back_populates="documents")
 

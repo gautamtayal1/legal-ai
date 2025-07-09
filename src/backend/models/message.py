@@ -12,7 +12,6 @@ class Message(Base):
     content = Column(Text, nullable=False)
     role = Column(
         Enum("user", "assistant", name="role_enum"),
-        default="user",
         nullable=False,
     )
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -20,4 +19,4 @@ class Message(Base):
     
     thread = relationship("Thread", back_populates="messages")
     user = relationship("User", back_populates="messages")
-    documents = relationship("Document", back_populates="message", cascade="all, delete-orphan")
+    documents = relationship("Document", back_populates="messages", cascade="all, delete-orphan")
