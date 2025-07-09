@@ -1,0 +1,8 @@
+---
+globs: *.tsx
+alwaysApply: false
+---
+- Never use svg icons, use the lucide icons instead.
+- Don't write unnecessary tailwind classes, just use what is needed.
+- Don't write unnecessary comments explaining the code. Write when asked.
+- Check if the code you write is not affecting the performance of the app.

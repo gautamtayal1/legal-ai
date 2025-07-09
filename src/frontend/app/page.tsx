@@ -1,14 +1,11 @@
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import Sidebar from "./components/Sidebar";
+import ChatArea from "./components/ChatArea";
 
 export default function Home() {
   return (
-    <div >
-      <SignedIn>
-        <UserButton />
-      </SignedIn>
-      <SignedOut>
-        <SignInButton />
-      </SignedOut>
+    <div className="flex h-screen">
+      <Sidebar />
+      <ChatArea />
     </div>
   );
 }
