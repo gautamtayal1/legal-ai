@@ -111,6 +111,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
     if (uploadedFiles.length === 0) {
       alert('Please upload at least one document');
       return;
+      
     }
 
     setIsSubmitting(true);
@@ -127,9 +128,9 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-chat-area rounded-2xl border border-white/10 w-full max-w-2xl max-h-[80vh] overflow-hidden">
+      <div className="bg-chat-area rounded-2xl border border-white/10 w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-white/10">
+        <div className="p-6 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-white text-xl font-semibold">Upload Your Documents</h2>
@@ -146,8 +147,8 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6">
           {/* Upload Area */}
           <div
             onDrop={handleDrop}
@@ -194,7 +195,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
               <h3 className="text-white font-medium mb-3">
                 Uploaded Documents ({uploadedFiles.length})
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-60 overflow-y-auto">
                 {uploadedFiles.map((file) => (
                   <div
                     key={file.id}
@@ -220,32 +221,15 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
               </div>
             </div>
           )}
-
-          {/* Add More Button */}
-          {uploadedFiles.length > 0 && (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full mt-4 p-3 border-2 border-dashed border-white/20 rounded-lg text-white/60 hover:text-white hover:border-white/30 transition-colors flex items-center justify-center space-x-2"
-            >
-              <Plus size={16} />
-              <span>Add More Documents</span>
-            </button>
-          )}
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-white/10 bg-chat-area/50">
+        {/* Footer - Always Visible */}
+        <div className="p-6 border-t border-white/10 bg-chat-area/50 flex-shrink-0">
           <div className="flex items-center justify-between">
             <p className="text-white/60 text-sm">
               Once you start the conversation, you can't add more documents
             </p>
             <div className="flex space-x-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-white/70 hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
               <button
                 onClick={handleSubmit}
                 disabled={uploadedFiles.length === 0 || isSubmitting}
