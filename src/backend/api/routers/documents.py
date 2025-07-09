@@ -13,9 +13,9 @@ router = APIRouter(
     tags=["documents"],
 )
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
-S3_REGION = os.getenv("S3_REGION")
-S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY")
-S3_SECRET_KEY = os.getenv("S3_SECRET_KEY")
+AWS_REGION = os.getenv("AWS_REGION")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 @router.get("/")
 async def list_documents(db: Session = Depends(get_db)):
@@ -57,20 +57,16 @@ async def upload_document(
             status_code=400, 
             detail=f"File type {file.content_type} not supported. Allowed types: {list(allowed_types.keys())}"
         )
-    
-    # Read file content
+        
     file_content = await file.read()
     file_size = len(file_content)
     
-    # Validate file size (10MB limit)
     if file_size > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
     
     try:
-        # Upload to S3
         s3_key, s3_url = upload_file(file_content, file.filename)
         
-        # Save metadata to database
         document = Document(
             document_url=s3_url,
             filename=file.filename,
