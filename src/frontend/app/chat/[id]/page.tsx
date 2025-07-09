@@ -1,9 +1,11 @@
-"use client";
+import Sidebar from "@/components/Sidebar";
+import HomeChatArea from "@/app/components/HomePage/HomeChatArea";
 
-import { useParams } from 'next/navigation';
-
-const Page = () => {
-  
-};
-
-export default Page;
+export default function Home() {
+  return (
+    <div className="flex h-screen ">
+      <Sidebar />
+      <HomeChatArea />
+    </div>
+  );
+}

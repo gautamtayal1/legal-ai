@@ -1,11 +1,11 @@
 import Sidebar from "./components/Sidebar";
-import ChatArea from "./components/ChatArea";
+import HomeChatArea from "./components/HomePage/HomeChatArea";
 
 export default function Home() {
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen ">
       <Sidebar />
-      <ChatArea />
+      <HomeChatArea />
     </div>
   );
 }
