@@ -1,13 +1,21 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from sqlalchemy.orm import Session
-from ...core.database import get_db
-from ...models.document import Document
-from ...services.s3_service import upload_file
+from core.database import get_db
+from models.document import Document
+from services.s3_service import upload_file
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter(
     prefix="/documents",
     tags=["documents"],
 )
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+S3_REGION = os.getenv("S3_REGION")
+S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY")
+S3_SECRET_KEY = os.getenv("S3_SECRET_KEY")
 
 @router.get("/")
 async def list_documents(db: Session = Depends(get_db)):
