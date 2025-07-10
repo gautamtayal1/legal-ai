@@ -1,0 +1,138 @@
+"""
+Text cleaning processors.
+"""
+
+import re
+from typing import Dict, Any
+from .base import TextProcessor, ProcessingResult
+
+class WhitespaceNormalizer(TextProcessor):
+    """Normalize whitespace in text."""
+    
+    @property
+    def name(self) -> str:
+        return "whitespace_normalizer"
+    
+    def process(self, text: str) -> ProcessingResult:
+        """Normalize whitespace."""
+        original_length = len(text)
+        
+        # Replace multiple spaces with single space
+        text = re.sub(r' +', ' ', text)
+        
+        # Replace multiple newlines with double newline (preserve paragraph breaks)
+        text = re.sub(r'\n\s*\n+', '\n\n', text)
+        
+        # Replace tabs with spaces
+        text = text.replace('\t', ' ')
+        
+        # Strip leading/trailing whitespace
+        text = text.strip()
+        
+        return ProcessingResult(
+            text=text,
+            original_length=original_length,
+            processed_length=len(text),
+            metadata={"processor": self.name}
+        )
+
+class EncodingCleaner(TextProcessor):
+    """Clean encoding-related issues."""
+    
+    @property
+    def name(self) -> str:
+        return "encoding_cleaner"
+    
+    def process(self, text: str) -> ProcessingResult:
+        """Clean encoding issues."""
+        original_length = len(text)
+        
+        # Remove or replace common encoding artifacts
+        replacements = {
+            '\u00a0': ' ',  # Non-breaking space
+            '\u2018': "'",  # Left single quotation mark
+            '\u2019': "'",  # Right single quotation mark
+            '\u201c': '"',  # Left double quotation mark
+            '\u201d': '"',  # Right double quotation mark
+            '\u2013': '-',  # En dash
+            '\u2014': '--', # Em dash
+            '\u2026': '...', # Ellipsis
+        }
+        
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        
+        # Remove null characters and other control characters
+        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+        
+        return ProcessingResult(
+            text=text,
+            original_length=original_length,
+            processed_length=len(text),
+            metadata={"processor": self.name, "replacements": len(replacements)}
+        )
+
+class LineBreakNormalizer(TextProcessor):
+    """Normalize line breaks for better text flow."""
+    
+    @property
+    def name(self) -> str:
+        return "line_break_normalizer"
+    
+    def process(self, text: str) -> ProcessingResult:
+        """Normalize line breaks."""
+        original_length = len(text)
+        
+        # Normalize different line ending types
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+        
+        # Handle hyphenated line breaks (word continues on next line)
+        text = re.sub(r'-\s*\n\s*', '', text)
+        
+        # Join lines that don't end with punctuation (likely broken mid-sentence)
+        text = re.sub(r'(?<=[a-zA-Z])\n(?=[a-z])', ' ', text)
+        
+        # Preserve intentional line breaks (after punctuation)
+        text = re.sub(r'(?<=[.!?:;])\n', '\n', text)
+        
+        return ProcessingResult(
+            text=text,
+            original_length=original_length,
+            processed_length=len(text),
+            metadata={"processor": self.name}
+        )
+
+class BasicTextCleaner(TextProcessor):
+    """Basic text cleaning for legal documents."""
+    
+    @property
+    def name(self) -> str:
+        return "basic_text_cleaner"
+    
+    def process(self, text: str) -> ProcessingResult:
+        """Basic text cleaning."""
+        original_length = len(text)
+        
+        # Remove excessive punctuation
+        text = re.sub(r'[.]{3,}', '...', text)
+        text = re.sub(r'[!]{2,}', '!', text)
+        text = re.sub(r'[?]{2,}', '?', text)
+        
+        # Clean up common OCR artifacts
+        text = re.sub(r'\b[il1|]+\b', 'I', text)  # Common OCR mistakes
+        text = re.sub(r'\b0\b', 'O', text)  # Zero to O
+        
+        # Remove page numbers and footers (simple patterns)
+        text = re.sub(r'^\d+\s*$', '', text, flags=re.MULTILINE)
+        text = re.sub(r'Page \d+ of \d+', '', text, flags=re.IGNORECASE)
+        
+        # Remove excessive whitespace (final cleanup)
+        text = re.sub(r'\s+', ' ', text)
+        text = text.strip()
+        
+        return ProcessingResult(
+            text=text,
+            original_length=original_length,
+            processed_length=len(text),
+            metadata={"processor": self.name}
+        )
