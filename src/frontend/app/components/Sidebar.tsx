@@ -2,6 +2,7 @@
 
 import { SignedIn, SignedOut, SignInButton, SignOutButton, UserButton } from '@clerk/nextjs'
 import { useUser } from '@clerk/nextjs'
+import Image from 'next/image'
 
 export default function Sidebar() {
   const { user } = useUser();
@@ -9,7 +10,9 @@ export default function Sidebar() {
   return (
     <div className="w-1/5 h-screen bg-sidebar flex flex-col border-r border-white/10">
       <div className="p-4">
-        <div className="text-white font-bold">Legal AI</div>
+        <div className="text-white font-bold">
+          <Image src="/logo.jpg" alt="Logo" width={50} height={50} />
+        </div>
       </div>
       
       <div className="p-4">
