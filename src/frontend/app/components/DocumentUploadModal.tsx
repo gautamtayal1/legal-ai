@@ -113,7 +113,6 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
       return;
       
     }
-
     setIsSubmitting(true);
     try {
       await onSubmit(uploadedFiles);

@@ -5,23 +5,47 @@ import { ArrowUp } from 'lucide-react'
 import { useState } from 'react';
 
 const InputBox = () => {
-  const [isSendActive, setIsSendActive] = useState(false);
-  const [isMessageActive, setIsMessageActive] = useState(false);
+  const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSend = () => {
+    if (message.trim() === '') return;
+    
+    setIsSending(true);
+    // TODO: Implement send message logic
+    console.log('Sending message:', message);
+    
+    // Reset message
+    setMessage('');
+    setIsSending(false);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   return (
     <div>
-      <div className="w-[90%] sm:w-[600px] md:w-[600px] lg:w-[700px] xl:w-[800px] 2xl:w-[1000px]">
-        <div className="bg-input-area rounded-4xl border border-white/5 p-4">
-          <input 
-            type="text" 
-            placeholder="Ask your document..." 
-            className="w-full p-1 rounded-lg bg-input-area text-white placeholder-white/70 focus:outline-none"
-          />
-          
-          <div className="flex justify-end gap-2 mt-3">
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-[90%] sm:w-[600px] md:w-[600px] lg:w-[700px] xl:w-[800px] 2xl:w-[1000px]">
+        <div className="bg-input-area rounded-2xl border border-white/5 p-3">
+          <div className="flex items-center gap-3">
+            <input 
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask your document..." 
+              className="flex-1 p-2 rounded-lg bg-input-area text-white placeholder-white/70 focus:outline-none"
+              disabled={isSending}
+            />
+            
             <button
-              className="w-10 h-10 flex items-center justify-center bg-button text-white rounded-full hover:bg-button/80 focus:outline-none"
-              disabled={!isSendActive}
+              onClick={handleSend}
+              disabled={message.trim() === '' || isSending}
+              className="w-10 h-10 flex items-center justify-center bg-button text-white rounded-full hover:bg-button/80 focus:outline-none disabled:bg-gray-600 disabled:cursor-not-allowed flex-shrink-0"
               aria-label="Send Message"
             >
               <ArrowUp size={20} />

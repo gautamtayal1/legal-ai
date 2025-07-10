@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, FileText, Brain, Search, Shield } from "lucide-react";
+import { Upload, FileText, Brain, Search } from "lucide-react";
 import DocumentUploadModal from "../DocumentUploadModal";
 
 interface UploadedFile {
@@ -23,19 +23,38 @@ export default function HomeChatArea() {
 
   const handleModalSubmit = async (files: UploadedFile[]) => {
     try {
-      // TODO: Implement actual upload logic here
       console.log('Uploading files:', files);
+      
+      // Upload each file
+      const uploadedDocs = [];
+      const newChatId = crypto.randomUUID();
+      
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file.file);
+        
+        const response = await fetch(`http://localhost:8000/api/documents/upload?message_id=${newChatId}&user_id=test-user`, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        uploadedDocs.push(result);
+      }
       
       // Close modal
       setIsModalOpen(false);
       
-      // Navigate to new chat with uploaded documents
-      // For now, just navigate to a mock chat ID
-      const newChatId = crypto.randomUUID();
-      router.push(`/chat/${newChatId}`);
+      // Navigate to chat with first document processing
+      router.push(`/chat/${newChatId}?processing=${uploadedDocs[0].id}&filename=${encodeURIComponent(uploadedDocs[0].filename)}`);
       
     } catch (error) {
       console.error('Upload failed:', error);
+      alert('Upload failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 

@@ -1,7 +1,17 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from enum import Enum as PyEnum
 from . import Base
+
+class ProcessingStatus(PyEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"  
+    EXTRACTING = "extracting"
+    CHUNKING = "chunking"
+    EMBEDDING = "embedding"
+    READY = "ready"
+    FAILED = "failed"
 
 class Document(Base):
     __tablename__ = "documents"
@@ -14,6 +24,8 @@ class Document(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     thread_id = Column(String, ForeignKey("threads.id"), nullable=False)
+    processing_status = Column(Enum(ProcessingStatus), default=ProcessingStatus.PENDING)
+    error_message = Column(Text, nullable=True)
     
     user = relationship("User")
     thread = relationship("Thread", back_populates="documents")

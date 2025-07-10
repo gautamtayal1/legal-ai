@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from sqlalchemy.orm import Session
 from core.database import get_db
-from models.document import Document
+from models.document import Document, ProcessingStatus
 from services.s3_service import upload_file
+from services.document_processing import start_processing_background
 import os
 from dotenv import load_dotenv
 
@@ -28,9 +29,10 @@ async def list_documents(db: Session = Depends(get_db)):
             "file_type": doc.file_type,
             "file_size": doc.file_size,
             "document_url": doc.document_url,
-            "message_id": doc.message_id,
+            "thread_id": doc.thread_id,
             "user_id": doc.user_id,
-            "uploaded_at": doc.uploaded_at
+            "uploaded_at": doc.uploaded_at,
+            "processing_status": doc.processing_status
         }
         for doc in documents
     ]
@@ -72,13 +74,18 @@ async def upload_document(
             filename=file.filename,
             file_type=allowed_types[file.content_type],
             file_size=file_size,
-            message_id=message_id,
-            user_id=user_id
+            thread_id=message_id,  # Using message_id as thread_id
+            user_id=user_id,
+            processing_status=ProcessingStatus.PENDING,
+            processing_progress=0
         )
         
         db.add(document)
         db.commit()
         db.refresh(document)
+        
+        # Start background processing
+        start_processing_background(document.id)
         
         return {
             "id": document.id,
@@ -87,6 +94,7 @@ async def upload_document(
             "file_size": document.file_size,
             "document_url": document.document_url,
             "uploaded_at": document.uploaded_at,
+            "processing_status": document.processing_status,
             "s3_key": s3_key
         }
         
@@ -98,3 +106,20 @@ async def upload_document(
 async def get_document(doc_id: str):
     """Fetch single document placeholder"""
     raise HTTPException(status_code=404, detail="Document not found")
+
+@router.get("/{doc_id}/status")
+async def get_document_status(doc_id: int, db: Session = Depends(get_db)):
+    """Get document processing status for live updates"""
+    document = db.query(Document).filter(Document.id == doc_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    return {
+        "id": document.id,
+        "filename": document.filename,
+        "processing_status": document.processing_status,
+        "processing_step": document.processing_step,
+        "processing_progress": document.processing_progress,
+        "error_message": document.error_message,
+        "is_ready": document.processing_status == "ready"
+    }
