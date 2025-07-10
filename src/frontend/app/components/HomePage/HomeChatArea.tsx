@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, FileText, Brain, Search } from "lucide-react";
 import DocumentUploadModal from "../DocumentUploadModal";
+import { useUser } from "@clerk/nextjs";
 
 interface UploadedFile {
   id: string;
@@ -14,6 +15,7 @@ interface UploadedFile {
 }
 
 export default function HomeChatArea() {
+  const { user } = useUser();
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -25,15 +27,20 @@ export default function HomeChatArea() {
     try {
       console.log('Uploading files:', files);
       
-      // Upload each file
       const uploadedDocs = [];
       const newChatId = crypto.randomUUID();
+
+
+      
+      router.push(`/chat/${newChatId}`);
       
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file.file);
+        formData.append('user_id', user?.id || '');
+        formData.append('thread_id', newChatId);
         
-        const response = await fetch(`http://localhost:8000/api/documents/upload?message_id=${newChatId}&user_id=test-user`, {
+        const response = await fetch(`http://localhost:8000/api/documents/upload`, {
           method: 'POST',
           body: formData,
         });
@@ -49,8 +56,6 @@ export default function HomeChatArea() {
       // Close modal
       setIsModalOpen(false);
       
-      // Navigate to chat with first document processing
-      router.push(`/chat/${newChatId}?processing=${uploadedDocs[0].id}&filename=${encodeURIComponent(uploadedDocs[0].filename)}`);
       
     } catch (error) {
       console.error('Upload failed:', error);

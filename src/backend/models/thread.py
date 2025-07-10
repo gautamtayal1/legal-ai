@@ -14,4 +14,5 @@ class Thread(Base):
     
     # Relationships
     user = relationship("User", back_populates="threads")
-    messages = relationship("Message", back_populates="thread", cascade="all, delete-orphan") 
+    messages = relationship("Message", back_populates="thread", cascade="all, delete-orphan")
+    documents = relationship("Document", back_populates="thread", cascade="all, delete-orphan") 

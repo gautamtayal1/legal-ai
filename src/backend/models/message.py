@@ -19,4 +19,3 @@ class Message(Base):
     
     thread = relationship("Thread", back_populates="messages")
     user = relationship("User", back_populates="messages")
-    documents = relationship("Document", back_populates="messages", cascade="all, delete-orphan")

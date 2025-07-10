@@ -25,6 +25,8 @@ class Document(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     thread_id = Column(String, ForeignKey("threads.id"), nullable=False)
     processing_status = Column(Enum(ProcessingStatus), default=ProcessingStatus.PENDING)
+    processing_step = Column(String, nullable=True)
+    processing_progress = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
     
     user = relationship("User")

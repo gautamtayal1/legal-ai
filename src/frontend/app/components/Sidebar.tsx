@@ -1,6 +1,6 @@
 "use client";
 
-import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
+import { SignedIn, SignedOut, SignInButton, SignOutButton, UserButton } from '@clerk/nextjs'
 import { useUser } from '@clerk/nextjs'
 
 export default function Sidebar() {
@@ -21,10 +21,10 @@ export default function Sidebar() {
       <div className="flex-1 p-4 overflow-y-auto" style={{height: '70%'}}>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 flex">
         <SignedOut>
           <button className="w-full py-2 px-4 rounded-lg">
-            Sign In
+            <SignInButton />
           </button>
         </SignedOut>
         <SignedIn>
@@ -34,6 +34,7 @@ export default function Sidebar() {
               {user?.fullName}
             </div>
           </button>
+          <SignOutButton />
         </SignedIn>
       </div>
     </div>

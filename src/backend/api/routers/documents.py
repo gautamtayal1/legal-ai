@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form
 from sqlalchemy.orm import Session
 from core.database import get_db
 from models.document import Document, ProcessingStatus
@@ -37,15 +37,18 @@ async def list_documents(db: Session = Depends(get_db)):
         for doc in documents
     ]
 
+import logging
+
 @router.post("/upload")
 async def upload_document(
-    message_id: str,
-    user_id: str,
     file: UploadFile = File(...),
+    thread_id: str = Form(...),
+    user_id: str = Form(...),
     db: Session = Depends(get_db)
 ):
     """Upload a document to S3 and save metadata to database."""
-    
+    logging.debug(f"Received upload request: filename={file.filename}, content_type={file.content_type}, thread_id={thread_id}, user_id={user_id}")
+
     # Validate file type
     allowed_types = {
         "application/pdf": "pdf",
@@ -55,6 +58,7 @@ async def upload_document(
     }
     
     if file.content_type not in allowed_types:
+        logging.warning(f"Rejected file upload: unsupported type {file.content_type}")
         raise HTTPException(
             status_code=400, 
             detail=f"File type {file.content_type} not supported. Allowed types: {list(allowed_types.keys())}"
@@ -62,19 +66,23 @@ async def upload_document(
         
     file_content = await file.read()
     file_size = len(file_content)
-    
+    logging.debug(f"File size: {file_size} bytes")
+
     if file_size > 10 * 1024 * 1024:
+        logging.warning(f"Rejected file upload: file size {file_size} exceeds 10MB limit")
         raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
     
     try:
+        logging.info(f"Uploading file '{file.filename}' to S3...")
         s3_key, s3_url = upload_file(file_content, file.filename)
+        logging.info(f"File uploaded to S3: key={s3_key}, url={s3_url}")
         
         document = Document(
             document_url=s3_url,
             filename=file.filename,
             file_type=allowed_types[file.content_type],
             file_size=file_size,
-            thread_id=message_id,  # Using message_id as thread_id
+            thread_id=thread_id,  # Using message_id as thread_id
             user_id=user_id,
             processing_status=ProcessingStatus.PENDING,
             processing_progress=0
@@ -83,11 +91,13 @@ async def upload_document(
         db.add(document)
         db.commit()
         db.refresh(document)
-        
+        logging.info(f"Document metadata saved to DB: id={document.id}")
+
         # Start background processing
+        logging.info(f"Starting background processing for document id={document.id}")
         start_processing_background(document.id)
         
-        return {
+        response = {
             "id": document.id,
             "filename": document.filename,
             "file_type": document.file_type,
@@ -97,9 +107,12 @@ async def upload_document(
             "processing_status": document.processing_status,
             "s3_key": s3_key
         }
+        logging.debug(f"Upload response: {response}")
+        return response
         
     except Exception as e:
         db.rollback()
+        logging.error(f"Upload failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @router.get("/{doc_id}")

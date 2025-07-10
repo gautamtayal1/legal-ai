@@ -89,12 +89,12 @@ def test_document_upload():
             files = {
                 "file": (test_file_path, f, "application/pdf")
             }
-            params = {
+            data = {
                 "message_id": "test-message-123",
                 "user_id": "test-user-456"
             }
             
-            response = requests.post(f"{BASE_URL}/documents/upload", files=files, params=params)
+            response = requests.post(f"{BASE_URL}/documents/upload", files=files, data=data)
         
         if response.status_code == 200:
             result = response.json()
