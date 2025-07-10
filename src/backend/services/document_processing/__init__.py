@@ -14,22 +14,15 @@ The processing pipeline is designed to handle legal documents with high accuracy
 and proper citation tracking.
 """
 
-from .pipeline import DocumentProcessingPipeline
-from .text_extraction import TextExtractionService
-from .structure_analysis import StructureAnalysisService
-from .legal_extraction import LegalContentExtractor
-from .chunking import LegalChunkingService
-from .embedding import EmbeddingService
-from .vector_store import VectorStoreService
-from .search_indexing import SearchIndexingService
+from .text_extraction import TextExtractionService, extract_text, extract_text_batch, is_supported, ExtractionResult
+from .background_processor import start_processing_background, process_document_sync
 
 __all__ = [
-    "DocumentProcessingPipeline",
-    "TextExtractionService", 
-    "StructureAnalysisService",
-    "LegalContentExtractor",
-    "LegalChunkingService",
-    "EmbeddingService",
-    "VectorStoreService",
-    "SearchIndexingService"
+    "TextExtractionService",
+    "extract_text", 
+    "extract_text_batch",
+    "is_supported",
+    "ExtractionResult",
+    "start_processing_background",
+    "process_document_sync"
 ] 

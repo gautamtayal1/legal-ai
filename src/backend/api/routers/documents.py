@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form
 from sqlalchemy.orm import Session
 from core.database import get_db
 from models.document import Document, ProcessingStatus
-from services.s3_service import upload_file
+from utils.s3_service import upload_file
 from services.document_processing import start_processing_background
 import os
 from dotenv import load_dotenv

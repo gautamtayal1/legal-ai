@@ -47,7 +47,7 @@ alwaysApply: false
 ## 🌊 **SINGLE LINE MEGA-DETAILED FLOW**
 
 ```
-[USER UPLOADS LEGAL DOCUMENT] → [FILE VALIDATION & S3 STORAGE] → [BACKGROUND JOB TRIGGERS] → [TEXT EXTRACTION FROM FILE] → [DOCUMENT STRUCTURE ANALYSIS] → [LEGAL CONTENT EXTRACTION] → [INTELLIGENT LEGAL CHUNKING] → [GENERATE VECTOR EMBEDDINGS] → [STORE IN VECTOR DATABASE] → [INDEX IN ELASTICSEARCH] → [STORE METADATA IN POSTGRESQL] → [MARK PROCESSING COMPLETE] → ••• [USER ASKS LEGAL QUESTION] ••• → [QUERY PREPROCESSING] → [ROUND 1: SEMANTIC + KEYWORD SEARCH] → [ROUND 2: CROSS-REFERENCE EXPANSION] → [ROUND 3: DEFINITION RETRIEVAL] → [CONTEXT AGGREGATION & RANKING] → [LEGAL OBLIGATION ANALYSIS] → [NUMERICAL CONSISTENCY CHECK] → [CITATION PREPARATION] → [LLM ANSWER GENERATION] → [RESPONSE FORMATTING] → [FRONTEND DISPLAY WITH CITATIONS]
+[USER UPLOADS LEGAL DOCUMENT] → [FILE VALIDATION & S3 STORAGE] → [BACKGROUND JOB TRIGGERS] → [TEXT EXTRACTION FROM FILE] → [BASIC TEXT PREPROCESSING] → [INTELLIGENT LEGAL CHUNKING] → [GENERATE VECTOR EMBEDDINGS] → [STORE IN VECTOR DATABASE] → [INDEX IN ELASTICSEARCH] → [STORE METADATA IN POSTGRESQL] → [MARK PROCESSING COMPLETE] → ••• [USER ASKS LEGAL QUESTION] ••• → [QUERY PREPROCESSING] → [SEMANTIC + KEYWORD SEARCH] → [LLM ANSWER GENERATION] → [RESPONSE FORMATTING] → [FRONTEND DISPLAY WITH CITATIONS]
 ```
 
 ---
@@ -95,44 +95,15 @@ alwaysApply: false
 
 ---
 
-### **STEP 5: [DOCUMENT STRUCTURE ANALYSIS]**
-**What happens**: Analyze the extracted text to understand document structure - identify sections, subsections, headers, page numbers
-**Legal document patterns**: Look for "Section 1", "Article I", "1.1", numbered lists, defined terms sections, signature blocks
-**Technical details**: Use regex patterns to identify section headers, build hierarchical tree of document structure
-**Example patterns**: `Section \d+`, `\d+\.\d+`, `Article [IVX]+`, `WHEREAS,`, `NOW THEREFORE`
-**Tools involved**: Regular expressions (re module), spaCy for sentence segmentation, custom legal document parsers
-**Database storage**: Store document hierarchy in PostgreSQL as parent-child relationships between sections
-**Output**: Structured representation like `{"section_1": {"subsection_1_1": {...}, "subsection_1_2": {...}}}`
+### **STEP 5: [BASIC TEXT PREPROCESSING]**
+**What happens**: Clean and prepare text for chunking - remove extra whitespace, handle encoding issues
+**Technical details**: Basic text normalization, encoding detection, line break handling
+**Tools involved**: Basic string processing, chardet for encoding
+**Output**: Clean text ready for chunking
 
 ---
 
-### **STEP 6: [LEGAL CONTENT EXTRACTION]**
-**What happens**: Extract legal-specific content like definitions, cross-references, obligations, and key terms
-
-**6A: DEFINITION EXTRACTION**
-**What it does**: Find the "Definitions" section (usually early in contract), extract all defined terms and their meanings
-**Pattern matching**: Look for `"Term" means...`, `Term shall mean...`, `For purposes of this Agreement, "X" means...`
-**Technical details**: Identify definitions section, parse term-definition pairs, create mapping dictionary
-**Tools involved**: Regex patterns, NLP libraries like spaCy for entity recognition
-**Example output**: `{"Effective Date": "January 1, 2024", "Confidential Information": "any non-public information..."}`
-
-**6B: CROSS-REFERENCE EXTRACTION**
-**What it does**: Find all references to other parts of the document like "see Section 5.2", "as defined in Article III"
-**Pattern matching**: `Section \d+\.\d+`, `Article [IVX]+`, `paragraph (a)`, `subsection \d+`
-**Purpose**: Later when user asks about Section 2, we automatically include referenced Section 5.2
-**Tools involved**: Regex for reference patterns, graph structures to map relationships
-**Example output**: `{"section_2_1": ["section_5_2", "article_3"], "section_4": ["definitions"]}`
-
-**6C: OBLIGATION EXTRACTION**
-**What it does**: Find who must do what and when - critical for legal analysis
-**Pattern matching**: `[Party] shall...`, `[Party] must...`, `[Party] will...`, `within X days`
-**Technical details**: Identify parties (Company, Client, etc.), extract obligations, find deadlines
-**Tools involved**: Named Entity Recognition (NER), dependency parsing with spaCy
-**Example output**: `{"party": "Company", "obligation": "deliver reports", "deadline": "30 days"}`
-
----
-
-### **STEP 7: [INTELLIGENT LEGAL CHUNKING]**
+### **STEP 6: [INTELLIGENT LEGAL CHUNKING]**
 **What happens**: Break document into smaller pieces while preserving legal meaning and context
 
 **Why chunking is needed**: 
@@ -163,7 +134,7 @@ Metadata: {section: "5.2", tokens: 287, overlap_start: 50, overlap_end: 45}
 
 ---
 
-### **STEP 8: [GENERATE VECTOR EMBEDDINGS]**
+### **STEP 7: [GENERATE VECTOR EMBEDDINGS]**
 **What happens**: Convert each text chunk into a mathematical vector representation that captures semantic meaning
 
 **What are embeddings**: Numbers that represent meaning - similar concepts have similar numbers
@@ -186,7 +157,7 @@ Metadata: {section: "5.2", tokens: 287, overlap_start: 50, overlap_end: 45}
 
 ---
 
-### **STEP 9: [STORE IN VECTOR DATABASE]**
+### **STEP 8: [STORE IN VECTOR DATABASE]**
 **What happens**: Store vectors in specialized database optimized for similarity search
 
 **What vector databases do**: Store millions of vectors, find most similar vectors to query vector in milliseconds
@@ -218,7 +189,7 @@ Metadata: {section: "5.2", tokens: 287, overlap_start: 50, overlap_end: 45}
 
 ---
 
-### **STEP 10: [INDEX IN ELASTICSEARCH]**
+### **STEP 9: [INDEX IN ELASTICSEARCH]**
 **What happens**: Store chunk text in Elasticsearch for precise keyword and phrase searching
 
 **Why Elasticsearch**: Vector search finds semantically similar content, but sometimes you need exact keyword matches
@@ -254,7 +225,7 @@ Metadata: {section: "5.2", tokens: 287, overlap_start: 50, overlap_end: 45}
 
 ---
 
-### **STEP 11: [STORE METADATA IN POSTGRESQL]**
+### **STEP 10: [STORE METADATA IN POSTGRESQL]**
 **What happens**: Store structured relationships, processing status, and chunk metadata in relational database
 
 **Why PostgreSQL**: Vector and Elasticsearch store content, but PostgreSQL stores relationships and business logic
@@ -281,7 +252,7 @@ VALUES (123, 387, 'section_5_2', 'Section 5.2 Termination Rights...', 287, 'doc_
 
 ---
 
-### **STEP 12: [MARK PROCESSING COMPLETE]**
+### **STEP 11: [MARK PROCESSING COMPLETE]**
 **What happens**: Update document status, log processing results, notify user of completion
 
 **Status update**: Change document.processing_status from "processing" to "completed" (or "failed" if errors)
@@ -301,7 +272,7 @@ VALUES (123, 387, 'section_5_2', 'Section 5.2 Termination Rights...', 287, 'doc_
 
 ---
 
-### **STEP 13: [QUERY PREPROCESSING]**
+### **STEP 12: [QUERY PREPROCESSING]**
 **What happens**: Analyze and prepare user question for optimal search
 
 **Query analysis**:
@@ -324,29 +295,15 @@ VALUES (123, 387, 'section_5_2', 'Section 5.2 Termination Rights...', 287, 'doc_
 
 ---
 
-### **STEP 14: [ROUND 1: SEMANTIC + KEYWORD SEARCH]**
+### **STEP 13: [SEMANTIC + KEYWORD SEARCH]**
 **What happens**: First retrieval round combining vector similarity search and keyword matching
 
-**14A: SEMANTIC SEARCH (Vector Database)**
 **Process**: 
 1. Convert user question to embedding vector using same model as chunks
 2. Search vector database for most similar chunks (cosine similarity)
-3. Return top 10-20 most semantically similar chunks
-**Example**: "termination rights" finds chunks about "ending agreement", "contract cancellation" even without exact words
-
-**14B: KEYWORD SEARCH (Elasticsearch)**
-**Process**:
-1. Search Elasticsearch for exact phrase matches
-2. Use boolean queries for precision ("termination" AND "rights")
-3. Find chunks containing exact legal terminology
-**Example**: Finds exact phrase "terminate this Agreement" that semantic search might miss
-
-**14C: RESULT COMBINATION**
-**Process**:
-1. Merge results from both searches
-2. Remove duplicates
-3. Score chunks by relevance (semantic similarity + keyword match strength)
-4. Rank by combined score
+3. Search Elasticsearch for exact phrase matches
+4. Merge results from both searches, remove duplicates
+5. Score chunks by relevance and rank by combined score
 
 **Tools involved**: Vector database client, Elasticsearch client, similarity scoring algorithms
 **Search APIs**:
@@ -356,166 +313,11 @@ vector_results = pinecone.query(vector=query_embedding, top_k=20)
 # Keyword search  
 keyword_results = es.search(body={"query": {"match": {"text": "termination rights"}}})
 ```
-**Output**: 15-25 relevant chunks ranked by relevance score
+**Output**: 10-15 relevant chunks ranked by relevance score
 
 ---
 
-### **STEP 15: [ROUND 2: CROSS-REFERENCE EXPANSION]**
-**What happens**: Automatically follow references found in Round 1 results to gather complete context
-
-**Reference detection**: Scan retrieved chunks for patterns like "see Section 5.2", "as defined in Article III"
-**Automatic fetching**: For each reference found, automatically retrieve the referenced section
-**Why critical for legal**: Legal documents are highly interconnected - understanding one clause often requires reading referenced clauses
-
-**Technical process**:
-1. Use regex to find reference patterns in Round 1 chunks
-2. Look up section mappings in PostgreSQL database  
-3. Retrieve referenced chunks from vector database or Elasticsearch
-4. Include parent/child sections if helpful for context
-
-**Tools involved**: Regular expressions, database queries, recursive chunk retrieval
-**Example**:
-- Round 1 finds: "Company may terminate as provided in Section 8.2"
-- Round 2 automatically fetches: Section 8.2 content about termination procedures
-**Output**: Original chunks + all referenced sections for complete legal context
-
----
-
-### **STEP 16: [ROUND 3: DEFINITION RETRIEVAL]**
-**What happens**: Identify defined terms in all retrieved chunks and fetch their definitions
-
-**Term identification**: Scan chunks for capitalized terms that were extracted during document processing
-**Definition lookup**: Query definitions table for exact definitions from the document
-**Context inclusion**: Add definitions to retrieval context so LLM understands specialized terms
-
-**Technical process**:
-1. Extract potential defined terms from retrieved text (capitalized phrases, quoted terms)
-2. Query document_definitions table for matches
-3. Retrieve definition text and context
-4. Add definitions to final context payload
-
-**Tools involved**: NER for term extraction, PostgreSQL queries, text matching algorithms
-**Example**:
-- Retrieved chunk mentions: "Confidential Information"
-- Round 3 fetches: "Confidential Information means any non-public, proprietary information..."
-**Output**: Complete context including all relevant definitions
-
----
-
-### **STEP 17: [CONTEXT AGGREGATION & RANKING]**
-**What happens**: Combine all retrieved information, remove duplicates, and create final context for LLM
-
-**Aggregation process**:
-1. Merge chunks from all three rounds
-2. Remove exact duplicates 
-3. Remove low-relevance chunks if context is too large
-4. Organize by document structure (keep related sections together)
-5. Ensure context fits within LLM token limits
-
-**Ranking factors**:
-- Semantic similarity score from Round 1
-- Keyword match strength
-- Section importance (definitions and main clauses rank higher)
-- Cross-reference connectivity (frequently referenced sections rank higher)
-
-**Context optimization**:
-- Prioritize chunks that directly answer the question
-- Include necessary context for understanding
-- Trim to fit LLM context window (typically 8K-32K tokens)
-
-**Tools involved**: Deduplication algorithms, relevance scoring, text summarization if needed
-**Output**: Ranked, deduplicated context optimized for answer generation
-
----
-
-### **STEP 18: [LEGAL OBLIGATION ANALYSIS]**
-**What happens**: Analyze retrieved context to identify legal obligations, parties, conditions, and requirements
-
-**Obligation extraction**:
-- Find "shall", "must", "will" statements indicating legal requirements
-- Identify parties responsible for each obligation
-- Extract conditions and triggers ("if", "unless", "provided that")
-- Find deadlines and time requirements
-
-**Party identification**: 
-- Map generic terms ("Company", "Client") to actual entity names
-- Track which party has which obligations
-- Identify mutual obligations vs. one-sided requirements
-
-**Condition analysis**:
-- Find conditional obligations ("Company shall X if Y occurs")
-- Identify triggering events and circumstances
-- Map obligation dependencies and sequences
-
-**Tools involved**: NLP for obligation detection, legal pattern matching, dependency parsing
-**Example analysis**:
-```json
-{
-  "obligations": [
-    {
-      "party": "Company", 
-      "action": "provide 30 days written notice",
-      "condition": "if terminating for cause",
-      "deadline": "30 days before termination"
-    }
-  ]
-}
-```
-**Output**: Structured legal analysis of obligations and requirements
-
----
-
-### **STEP 19: [NUMERICAL CONSISTENCY CHECK]**
-**What happens**: Scan all retrieved content for numbers, dates, and deadlines to identify potential conflicts
-
-**Number extraction**: Find all numerical values (amounts, percentages, days, dates) in retrieved chunks
-**Conflict detection**: Identify cases where same concept has different numbers in different clauses
-**Critical for legal**: Contracts sometimes have inconsistent deadlines or amounts that need flagging
-
-**Technical process**:
-1. Extract numbers using regex and NER
-2. Categorize by type (monetary amounts, time periods, percentages)
-3. Group by concept (e.g., all "termination notice" periods)
-4. Flag inconsistencies for user attention
-
-**Tools involved**: Regular expressions, number extraction, conflict detection algorithms
-**Example conflicts found**:
-- Section 3: "30 days notice required"
-- Section 7: "60 days notice required"  
-- **Flag**: Conflicting notice periods
-**Output**: List of numerical conflicts and inconsistencies for user awareness
-
----
-
-### **STEP 20: [CITATION PREPARATION]**
-**What happens**: Prepare precise citations for every fact that will appear in the answer
-
-**Citation mapping**: Link each piece of information back to its exact source chunk and document location
-**Clickable citations**: Prepare data for frontend to create clickable citation links
-**Source verification**: Ensure every claim can be traced back to specific document text
-
-**Citation format preparation**:
-- Map facts to chunk IDs and character positions
-- Prepare section references (e.g., "Section 5.2, paragraph 3")
-- Generate unique citation IDs for frontend linking
-
-**Tools involved**: Citation tracking, metadata mapping, reference formatting
-**Example citation data**:
-```json
-{
-  "fact": "30 days written notice required",
-  "citation_id": "cite_1",
-  "source_chunk": "doc_123_chunk_387", 
-  "section": "Section 5.2",
-  "char_start": 245,
-  "char_end": 289
-}
-```
-**Output**: Complete citation mapping for answer verification
-
----
-
-### **STEP 21: [LLM ANSWER GENERATION]**
+### **STEP 14: [LLM ANSWER GENERATION]**
 **What happens**: Send all retrieved context and analysis to Large Language Model for comprehensive answer generation
 
 **Prompt engineering**: Create carefully crafted prompt that includes:
@@ -553,54 +355,26 @@ Requirements:
 
 ---
 
-### **STEP 22: [RESPONSE FORMATTING]**
-**What happens**: Structure the LLM-generated answer with proper formatting, citations, and metadata for frontend display
+### **STEP 15: [RESPONSE FORMATTING]**
+**What happens**: Structure the LLM-generated answer with basic citations for frontend display
 
-**Response structuring**:
+**Process**:
 - Parse LLM response for citation markers
-- Map citation markers to prepared citation data
-- Format answer sections (summary, detailed analysis, caveats)
-- Add metadata about search process and confidence
+- Map citation markers to chunk IDs  
+- Format answer with clickable citations
 
-**Citation linking**: 
-- Replace citation markers with clickable citation objects
-- Include chunk IDs for frontend to enable document jumping
-- Add tooltip text with exact quoted material
-
-**Metadata addition**:
-- Search process summary ("Retrieved 23 chunks across 3 rounds")
-- Confidence indicators where analysis is incomplete
-- Suggestions for follow-up questions
-
-**Tools involved**: Text parsing, citation mapping, response formatting
-**Example formatted response**:
-```json
-{
-  "answer": "You have three termination rights: [cite_1] immediate termination for material breach, [cite_2] termination with 30 days notice...",
-  "citations": [
-    {
-      "id": "cite_1",
-      "text": "Company may terminate immediately upon material breach",
-      "source": "Section 8.1",
-      "chunk_id": "doc_123_chunk_445"
-    }
-  ],
-  "metadata": {
-    "chunks_retrieved": 23,
-    "confidence": "high",
-    "search_rounds": 3
-  }
-}
-```
-**Output**: Fully formatted response ready for frontend display
+**Tools involved**: Text parsing, citation mapping
+**Output**: Formatted response with citations ready for frontend display
 
 ---
 
-### **STEP 23: [FRONTEND DISPLAY WITH CITATIONS]**
+### **STEP 16: [FRONTEND DISPLAY WITH CITATIONS]**
 **What happens**: Present the answer to user with interactive citations and document viewing capabilities
 
 **Answer display**:
-- Show main answer with inline citation links
+- Show main answer with inline 
+
+citation links
 - Provide expandable sections for detailed analysis
 - Display search process metadata if user wants to see "how you found this"
 
