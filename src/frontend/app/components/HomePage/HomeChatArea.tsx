@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Upload, FileText, Brain, Search } from "lucide-react";
 import DocumentUploadModal from "../DocumentUploadModal";
 import { useUser } from "@clerk/nextjs";
+import axios from "axios";
 
 interface UploadedFile {
   id: string;
@@ -30,9 +31,17 @@ export default function HomeChatArea() {
       const uploadedDocs = [];
       const newChatId = crypto.randomUUID();
 
+      const thread = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/threads`, {
+        id: newChatId,
+        user_id: user?.id || '',
+        title: 'New Chat',
+      });
 
-      
-      router.push(`/chat/${newChatId}`);
+      if (thread.status === 200) {
+        router.push(`/chat/${newChatId}`);
+      } else {
+        throw new Error('Failed to create thread');
+      }
       
       for (const file of files) {
         const formData = new FormData();
@@ -40,16 +49,13 @@ export default function HomeChatArea() {
         formData.append('user_id', user?.id || '');
         formData.append('thread_id', newChatId);
         
-        const response = await fetch(`http://localhost:8000/api/documents/upload`, {
-          method: 'POST',
-          body: formData,
-        });
+        const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/documents/upload`, formData);
         
-        if (!response.ok) {
+        if (response.status !== 200) {
           throw new Error(`Upload failed: ${response.statusText}`);
         }
-        
-        const result = await response.json();
+
+        const result = response.data;
         uploadedDocs.push(result);
       }
       

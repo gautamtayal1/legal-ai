@@ -17,43 +17,32 @@ async def process_document_async(document_id: int):
         
         # Step 1: Start processing
         document.processing_status = "processing"
-        document.processing_step = "Initializing document processing..."
-        document.processing_progress = 10
         db.commit()
         await asyncio.sleep(2)  # Simulate work
         
         # Step 2: Extract text
         document.processing_status = "extracting" 
-        document.processing_step = "Extracting text from document..."
-        document.processing_progress = 30
         db.commit()
         await asyncio.sleep(3)  # Simulate extraction
         
         # Step 3: Chunk document
         document.processing_status = "chunking"
-        document.processing_step = "Breaking document into meaningful sections..."
-        document.processing_progress = 60
         db.commit()
         await asyncio.sleep(2)  # Simulate chunking
         
         # Step 4: Generate embeddings
         document.processing_status = "embedding"
-        document.processing_step = "Generating embeddings for search..."
-        document.processing_progress = 85
         db.commit()
         await asyncio.sleep(3)  # Simulate embedding generation
         
         # Step 5: Complete
         document.processing_status = "ready"
-        document.processing_step = "Document ready for chat!"
-        document.processing_progress = 100
         db.commit()
         
     except Exception as e:
         # Mark as failed
         document.processing_status = "failed"
-        document.error_message = str(e)
-        document.processing_progress = 0
+        document.error_message = str(e)    
         db.commit()
     finally:
         db.close()

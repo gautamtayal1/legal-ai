@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FileText, Check, Loader2, Zap, Database, Brain } from 'lucide-react';
+import axios from 'axios';
 
 interface DocumentProcessingProps {
   documentId: number;
@@ -21,13 +22,10 @@ interface ProcessingStatus {
 const DocumentProcessing = ({ documentId, onComplete }: DocumentProcessingProps) => {
   const [status, setStatus] = useState<ProcessingStatus | null>(null);
 
-  // TEMPORARY: Change status for demonstration
   useEffect(() => {
-    // Simulate status changes for demonstration purposes
     let isMounted = true;
     const timeouts: NodeJS.Timeout[] = [];
 
-    // Example sequence of fake status updates
     const fakeStatuses: ProcessingStatus[] = [
       {
         id: documentId,
@@ -76,7 +74,6 @@ const DocumentProcessing = ({ documentId, onComplete }: DocumentProcessingProps)
       },
     ];
 
-    // Simulate the status changes over time
     fakeStatuses.forEach((fakeStatus, idx) => {
       const timeout = setTimeout(() => {
         if (isMounted) {
@@ -106,6 +103,14 @@ const DocumentProcessing = ({ documentId, onComplete }: DocumentProcessingProps)
     if (stepIndex === currentIndex || (stepName === 'processing' && currentStep)) return 'in-progress';
     return 'pending';
   };
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/documents/${documentId}/status`);
+      setStatus(response.data);
+    };
+    fetchStatus();
+  }, [documentId]);
 
   const steps = [
     { key: 'processing', icon: FileText, label: "Upload" },

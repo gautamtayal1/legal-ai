@@ -82,10 +82,9 @@ async def upload_document(
             filename=file.filename,
             file_type=allowed_types[file.content_type],
             file_size=file_size,
-            thread_id=thread_id,  # Using message_id as thread_id
+            thread_id=thread_id,
             user_id=user_id,
             processing_status=ProcessingStatus.PENDING,
-            processing_progress=0
         )
         
         db.add(document)
@@ -129,10 +128,7 @@ async def get_document_status(doc_id: int, db: Session = Depends(get_db)):
     
     return {
         "id": document.id,
-        "filename": document.filename,
         "processing_status": document.processing_status,
-        "processing_step": document.processing_step,
-        "processing_progress": document.processing_progress,
         "error_message": document.error_message,
         "is_ready": document.processing_status == "ready"
     }
