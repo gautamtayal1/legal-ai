@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from api.routers import documents
-from api.routers import clerk_webhooks  # Register Clerk webhook router
+from api.routers import clerk_webhooks  
+from api.routers import threads
 
-# Basic logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,6 @@ app = FastAPI(
     description="Legal document analysis and AI processing system"
 )
 
-# Enhanced CORS for frontend integration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -24,10 +23,9 @@ app.add_middleware(
     allow_credentials=True,
 )
 
-# Include routers
 app.include_router(documents.router, prefix="/api")
-# Public webhook route (no prefix)
 app.include_router(clerk_webhooks.router, prefix="/api")
+app.include_router(threads.router, prefix="/api")
 
 @app.get("/")
 async def root():
@@ -39,7 +37,8 @@ async def root():
             "health": "/health",
             "docs": "/docs",
             "documents": "/api/documents",
-            "clerk_webhook": "/webhooks"
+            "clerk_webhook": "/webhooks",
+            "threads": "/api/threads"
         }
     }
 

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form
 from sqlalchemy.orm import Session
 from core.database import get_db
 from models.thread import Thread
+from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 
@@ -12,6 +13,11 @@ router = APIRouter(
     tags=["threads"],
 )
 
+class ThreadCreate(BaseModel):
+    id: str
+    user_id: str
+    title: str
+
 @router.get("/")
 async def list_threads(db: Session = Depends(get_db)):
     """Get all threads from the database."""
@@ -19,7 +25,7 @@ async def list_threads(db: Session = Depends(get_db)):
     return [
         {
             "id": thread.id,
-            "name": thread.name,
+            "title": thread.title,  # Fixed: changed from 'name' to 'title'
             "created_at": thread.created_at,
             "updated_at": thread.updated_at
         }
@@ -27,9 +33,13 @@ async def list_threads(db: Session = Depends(get_db)):
     ]
 
 @router.post("/")
-async def create_thread(threadId: str, userId: str, title: str, db: Session = Depends(get_db)):
+async def create_thread(thread_data: ThreadCreate, db: Session = Depends(get_db)):
     """Create a new thread."""
-    thread = Thread(id=threadId, user_id=userId, title=title)
+    thread = Thread(
+        id=thread_data.id, 
+        user_id=thread_data.user_id, 
+        title=thread_data.title
+    )
     db.add(thread)
     db.commit()
     db.refresh(thread)
@@ -39,7 +49,7 @@ async def create_thread(threadId: str, userId: str, title: str, db: Session = De
 async def get_thread(threadId: str, db: Session = Depends(get_db)):
     """Get a thread by its ID."""
     thread = db.query(Thread).filter(Thread.id == threadId).first()
-    db.add(thread)
-    db.commit()
-    db.refresh(thread)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    return thread
     
