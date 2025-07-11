@@ -10,7 +10,6 @@ class ChunkingStrategy(Enum):
     FIXED_SIZE = "fixed_size"
     RECURSIVE = "recursive"
 
-
 @dataclass
 class ChunkConfig:
     chunk_size: int = 1000

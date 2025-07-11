@@ -76,10 +76,10 @@ class DocumentChunkingService:
         return await self.chunk_document(document, strategy, add_overlap, create_metadata)
     
     async def chunk_multiple_documents(self, 
-                                     documents: List[Dict[str, Any]],
-                                     strategy: Optional[ChunkingStrategy] = None,
-                                     add_overlap: bool = True,
-                                     create_metadata: bool = True) -> Dict[str, List[DocumentChunk]]:
+        documents: List[Dict[str, Any]],
+        strategy: Optional[ChunkingStrategy] = None,
+        add_overlap: bool = True,
+        create_metadata: bool = True) -> Dict[str, List[DocumentChunk]]:
         
         tasks = []
         for document in documents:

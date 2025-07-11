@@ -142,16 +142,10 @@ Metadata: {section: "5.2", tokens: 287, overlap_start: 50, overlap_end: 45}
 **Why vectors**: Computers can calculate similarity between vectors to find related content
 
 **Technical process**:
-1. Send each chunk text to embedding model API (OpenAI, Cohere, etc.)
+1. Send each chunk text to embedding model API (OpenAI)
 2. Receive back array of 1536 numbers (for OpenAI ada-002) representing that chunk's meaning
 3. Store vector alongside chunk metadata
 
-**Embedding model options**:
-- **OpenAI text-embedding-ada-002**: $0.0001 per 1K tokens, very good quality
-- **OpenAI text-embedding-3-large**: Newer, better performance, higher cost
-- **Open source alternatives**: sentence-transformers models (free but need GPU)
-
-**Tools involved**: OpenAI API, transformers library, numpy for vector operations
 **API call example**: `openai.embeddings.create(input="chunk text", model="text-embedding-ada-002")`
 **Output**: Vector like `[0.123, -0.456, 0.789, ...]` with 1536 dimensions per chunk
 
@@ -165,18 +159,13 @@ Metadata: {section: "5.2", tokens: 287, overlap_start: 50, overlap_end: 45}
 **Why not regular database**: PostgreSQL can't efficiently search through millions of high-dimensional vectors
 
 **Storage process**:
-1. Connect to vector database (Pinecone, Weaviate, etc.)
+1. Connect to vector database (ChromaDB)
 2. Create namespace/collection for this document
 3. Insert each chunk with: vector, text content, metadata (document_id, section, chunk_id)
 4. Build optimized index for fast similarity search
 
-**Vector database options**:
-- **Pinecone**: Managed cloud service, easiest to use, pay-per-vector
-- **Weaviate**: Open source or cloud, good performance, GraphQL API
-- **Chroma**: Simple local database, good for development
-- **pgvector**: PostgreSQL extension, keep everything in one database
+**Tools involved**: ChromaDB client
 
-**Tools involved**: Pinecone client, Weaviate client, or database-specific SDK
 **Example storage**: 
 ```
 {
