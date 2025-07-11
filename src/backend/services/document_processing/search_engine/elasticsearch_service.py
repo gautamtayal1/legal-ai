@@ -23,7 +23,7 @@ class ElasticsearchService:
         self.logger = logging.getLogger(__name__)
         
         self.client = AsyncElasticsearch(
-            hosts=[{"host": self.config.host, "port": self.config.port}],
+            hosts=[f"http://{self.config.host}:{self.config.port}"],
             timeout=self.config.timeout
         )
         

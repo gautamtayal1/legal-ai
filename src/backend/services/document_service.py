@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 from .document_pipeline import DocumentPipeline
 from .document_processing.text_extraction import extract_text
 from .document_processing.text_processing import process_text
-from ..models.document import Document, ProcessingStatus
-from ..utils.s3_service import download_file
-from ..core.database import get_db
+from models.document import Document, ProcessingStatus
+from utils.s3_service import download_file
+from core.database import get_db
 
 logger = logging.getLogger(__name__)
 
