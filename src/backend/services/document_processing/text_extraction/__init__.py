@@ -45,7 +45,7 @@ def extract_text(file_path: Union[str, Path]) -> ExtractionResult:
     """Extract text from file."""
     return _service.extract(file_path)
 
-def extract_text_batch(file_paths: List[Union[str, Path]]) -> List[ExtractionResult]:
+def extract_batch(file_paths: List[Union[str, Path]]) -> List[ExtractionResult]:
     """Extract text from multiple files."""
     return _service.extract_batch(file_paths)
 
@@ -54,4 +54,4 @@ def is_supported(file_path: Union[str, Path]) -> bool:
     ext = Path(file_path).suffix.lower()
     return ext in _service.extractors
 
-__all__ = ['extract_text', 'extract_text_batch', 'is_supported', 'ExtractionResult', 'TextExtractionService'] 
+__all__ = ['extract', 'extract_batch', 'is_supported', 'ExtractionResult', 'TextExtractionService'] 

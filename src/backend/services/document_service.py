@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from .document_pipeline import DocumentPipeline
-from .document_processing.text_extraction import extract_text
+from .document_processing.text_extraction import extract
 from .document_processing.text_processing import process_text
 from ..models.document import Document, ProcessingStatus
 from ..utils.s3_service import download_file
@@ -50,7 +50,7 @@ class DocumentService:
                     self._update_document_error(db, document, "Failed to download file from S3")
                     return False
                 
-                extraction_result = self._extract_text(file_content, document.filename)
+                extraction_result = self._extract(file_content)
                 if extraction_result.error:
                     self._update_document_error(db, document, f"Text extraction failed: {extraction_result.error}")
                     return False

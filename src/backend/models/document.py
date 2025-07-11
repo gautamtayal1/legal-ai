@@ -6,10 +6,13 @@ from . import Base
 
 class ProcessingStatus(PyEnum):
     PENDING = "pending"
-    PROCESSING = "processing"  
+    UPLOADING = "uploading"
     EXTRACTING = "extracting"
+    PROCESSING = "processing"  
     CHUNKING = "chunking"
     EMBEDDING = "embedding"
+    STORING = "storing"
+    INDEXING = "indexing"
     READY = "ready"
     FAILED = "failed"
 
