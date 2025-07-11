@@ -7,6 +7,7 @@ from .document_processing.chunking.chunking_service import DocumentChunkingServi
 from .document_processing.chunking.base import ChunkingStrategy, ChunkConfig
 from .embedding.embedding_service import EmbeddingService, EmbeddingConfig
 from .embedding.vector_storage_service import VectorStorageService, VectorStorageConfig
+from .search_engine.elasticsearch_service import ElasticsearchService, ElasticsearchConfig
 
 
 @dataclass
@@ -14,8 +15,10 @@ class PipelineConfig:
     chunk_config: Optional[ChunkConfig] = None
     embedding_config: Optional[EmbeddingConfig] = None
     storage_config: Optional[VectorStorageConfig] = None
+    elasticsearch_config: Optional[ElasticsearchConfig] = None
     enable_overlap: bool = True
     enable_metadata: bool = True
+    enable_elasticsearch: bool = True
     batch_size: int = 50
 
 
@@ -39,6 +42,13 @@ class DocumentPipeline:
         self.vector_storage = VectorStorageService(
             config=self.config.storage_config
         )
+        
+        if self.config.enable_elasticsearch:
+            self.elasticsearch = ElasticsearchService(
+                config=self.config.elasticsearch_config
+            )
+        else:
+            self.elasticsearch = None
     
     async def process_document(self, 
                              document: Dict[str, Any],
@@ -59,7 +69,13 @@ class DocumentPipeline:
             
             embedded_chunks = await self.embedding_service.embed_chunks(chunks)
             
-            success = self.vector_storage.store_embeddings(embedded_chunks)
+            vector_success = self.vector_storage.store_embeddings(embedded_chunks)
+            
+            elasticsearch_success = True
+            if self.elasticsearch:
+                elasticsearch_success = self.elasticsearch.index_chunks(chunks)
+            
+            success = vector_success and elasticsearch_success
             
             if success:
                 stats = self.chunking_service.get_chunk_statistics(chunks)
@@ -147,7 +163,11 @@ class DocumentPipeline:
             return {"error": str(e)}
     
     def delete_document(self, document_id: str) -> bool:
-        return self.vector_storage.delete_document(document_id)
+        vector_deleted = self.vector_storage.delete_document(document_id)
+        elasticsearch_deleted = True
+        if self.elasticsearch:
+            elasticsearch_deleted = self.elasticsearch.delete_document(document_id)
+        return vector_deleted and elasticsearch_deleted
     
     def list_documents(self) -> List[str]:
         return self.vector_storage.list_documents()
@@ -155,11 +175,44 @@ class DocumentPipeline:
     def get_pipeline_stats(self) -> Dict[str, Any]:
         storage_stats = self.vector_storage.get_collection_stats()
         
-        return {
+        stats = {
             "embedding_model": self.embedding_service.config.model,
             "embedding_dimension": self.embedding_service.get_embedding_dimension(),
             "chunking_strategy": self.chunking_service.chunk_config.strategy.value,
             "chunk_size": self.chunking_service.chunk_config.chunk_size,
             "chunk_overlap": self.chunking_service.chunk_config.chunk_overlap,
+            "elasticsearch_enabled": self.elasticsearch is not None,
             **storage_stats
         }
+        
+        if self.elasticsearch:
+            elasticsearch_stats = self.elasticsearch.get_index_stats()
+            stats.update({"elasticsearch": elasticsearch_stats})
+        
+        return stats
+    
+    def search_text(self, 
+                   query: str,
+                   size: int = 10,
+                   document_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        if not self.elasticsearch:
+            return []
+        
+        return self.elasticsearch.search_text(
+            query=query,
+            size=size,
+            document_id=document_id
+        )
+    
+    def search_legal_content(self, 
+                           query: str,
+                           content_type: str = "all",
+                           size: int = 10) -> List[Dict[str, Any]]:
+        if not self.elasticsearch:
+            return []
+        
+        return self.elasticsearch.search_legal_content(
+            query=query,
+            content_type=content_type,
+            size=size
+        )
