@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from models.document import Document, ProcessingStatus
 from utils.s3_service import upload_file
-from services.document_processing import start_processing_background
+from services.document_service import start_processing_background
 import os
 from dotenv import load_dotenv
 

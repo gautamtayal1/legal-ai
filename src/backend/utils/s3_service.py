@@ -42,4 +42,15 @@ def upload_file(file_bytes: bytes, filename: str) -> Tuple[str, str]:
         raise RuntimeError(f"Failed to upload to S3: {e}") from e
 
     url = f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{unique_key}"
-    return unique_key, url 
+    return unique_key, url
+
+
+def download_file(s3_key: str) -> bytes:
+    """Download file from S3.
+    """
+    s3 = _get_s3_client()
+    try:
+        response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
+        return response['Body'].read()
+    except ClientError as e:
+        raise RuntimeError(f"Failed to download from S3: {e}") from e 

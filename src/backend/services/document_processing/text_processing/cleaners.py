@@ -17,16 +17,13 @@ class WhitespaceNormalizer(TextProcessor):
         """Normalize whitespace."""
         original_length = len(text)
         
-        # Replace multiple spaces with single space
         text = re.sub(r' +', ' ', text)
         
         # Replace multiple newlines with double newline (preserve paragraph breaks)
         text = re.sub(r'\n\s*\n+', '\n\n', text)
         
-        # Replace tabs with spaces
         text = text.replace('\t', ' ')
         
-        # Strip leading/trailing whitespace
         text = text.strip()
         
         return ProcessingResult(
@@ -47,7 +44,6 @@ class EncodingCleaner(TextProcessor):
         """Clean encoding issues."""
         original_length = len(text)
         
-        # Remove or replace common encoding artifacts
         replacements = {
             '\u00a0': ' ',  # Non-breaking space
             '\u2018': "'",  # Left single quotation mark
@@ -62,7 +58,6 @@ class EncodingCleaner(TextProcessor):
         for old, new in replacements.items():
             text = text.replace(old, new)
         
-        # Remove null characters and other control characters
         text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
         
         return ProcessingResult(
@@ -83,7 +78,6 @@ class LineBreakNormalizer(TextProcessor):
         """Normalize line breaks."""
         original_length = len(text)
         
-        # Normalize different line ending types
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         
         # Handle hyphenated line breaks (word continues on next line)
@@ -113,7 +107,6 @@ class BasicTextCleaner(TextProcessor):
         """Basic text cleaning."""
         original_length = len(text)
         
-        # Remove excessive punctuation
         text = re.sub(r'[.]{3,}', '...', text)
         text = re.sub(r'[!]{2,}', '!', text)
         text = re.sub(r'[?]{2,}', '?', text)
@@ -126,7 +119,6 @@ class BasicTextCleaner(TextProcessor):
         text = re.sub(r'^\d+\s*$', '', text, flags=re.MULTILINE)
         text = re.sub(r'Page \d+ of \d+', '', text, flags=re.IGNORECASE)
         
-        # Remove excessive whitespace (final cleanup)
         text = re.sub(r'\s+', ' ', text)
         text = text.strip()
         

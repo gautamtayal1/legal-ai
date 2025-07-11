@@ -24,8 +24,8 @@ class PipelineConfig:
 
 class DocumentPipeline:
     def __init__(self, 
-                 openai_api_key: str,
-                 config: Optional[PipelineConfig] = None):
+            openai_api_key: str,
+            config: Optional[PipelineConfig] = None):
         
         self.config = config or PipelineConfig()
         self.logger = logging.getLogger(__name__)
