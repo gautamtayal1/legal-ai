@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from .document_pipeline import DocumentPipeline
 from .document_processing.text_extraction import extract_text
+from .document_processing.text_processing import process_text
 from ..models.document import Document, ProcessingStatus
 from ..utils.s3_service import download_file
 from ..core.database import get_db
@@ -54,16 +55,24 @@ class DocumentService:
                     self._update_document_error(db, document, f"Text extraction failed: {extraction_result.error}")
                     return False
                 
+                # Process and clean the extracted text
+                processing_result = process_text(extraction_result.text)
+                if processing_result.error:
+                    self._update_document_error(db, document, f"Text processing failed: {processing_result.error}")
+                    return False
+                
                 pipeline_doc = {
                     "id": str(document.id),
                     "title": document.filename,
-                    "content": extraction_result.text,
+                    "content": processing_result.text,
                     "metadata": {
                         "filename": document.filename,
                         "file_type": document.file_type,
                         "file_size": document.file_size,
                         "thread_id": document.thread_id,
-                        "user_id": document.user_id
+                        "user_id": document.user_id,
+                        "extraction_metadata": extraction_result.metadata,
+                        "processing_metadata": processing_result.metadata
                     }
                 }
                 

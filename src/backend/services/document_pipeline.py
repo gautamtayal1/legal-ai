@@ -51,10 +51,10 @@ class DocumentPipeline:
             self.elasticsearch = None
     
     async def process_document(self, 
-                             document: Dict[str, Any],
-                             strategy: Optional[ChunkingStrategy] = None) -> Dict[str, Any]:
+        document: Dict[str, Any],
+        strategy: Optional[ChunkingStrategy] = None) -> Dict[str, Any]:
         try:
-            document_id = document.get("id", "unknown")
+            document_id = document.get("id", "")
             self.logger.info(f"Processing document {document_id}")
             
             chunks = await self.chunking_service.chunk_document(
@@ -65,28 +65,44 @@ class DocumentPipeline:
             )
             
             if not chunks:
-                return {"success": False, "error": "No chunks generated"}
+                return {"success": False, "error": "Error chunking document"}
             
-            embedded_chunks = await self.embedding_service.embed_chunks(chunks)
+            try:
+                embedded_chunks = await self.embedding_service.embed_chunks(chunks)
+                if not embedded_chunks:
+                    return {"success": False, "error": "Failed to generate embeddings"}
+            except Exception as e:
+                return {"success": False, "error": f"Embedding generation failed: {str(e)}"}
             
-            vector_success = self.vector_storage.store_embeddings(embedded_chunks)
+            # Store in vector database
+            try:
+                vector_success = self.vector_storage.store_embeddings(embedded_chunks)
+                if not vector_success:
+                    return {"success": False, "error": "Failed to store embeddings in vector database"}
+            except Exception as e:
+                return {"success": False, "error": f"Vector storage failed: {str(e)}"}
             
+            # Index in Elasticsearch (optional)
             elasticsearch_success = True
             if self.elasticsearch:
-                elasticsearch_success = self.elasticsearch.index_chunks(chunks)
+                try:
+                    elasticsearch_success = self.elasticsearch.index_chunks(chunks)
+                    if not elasticsearch_success:
+                        self.logger.warning(f"Elasticsearch indexing failed for document {document_id}, but continuing")
+                        # Don't fail the whole process for Elasticsearch issues
+                except Exception as e:
+                    self.logger.warning(f"Elasticsearch indexing error for document {document_id}: {str(e)}")
+                    # Don't fail the whole process for Elasticsearch issues
             
-            success = vector_success and elasticsearch_success
-            
-            if success:
-                stats = self.chunking_service.get_chunk_statistics(chunks)
-                return {
-                    "success": True,
-                    "document_id": document_id,
-                    "chunks_processed": len(chunks),
-                    "statistics": stats
-                }
-            else:
-                return {"success": False, "error": "Failed to store embeddings"}
+            # Success!
+            stats = self.chunking_service.get_chunk_statistics(chunks)
+            return {
+                "success": True,
+                "document_id": document_id,
+                "chunks_processed": len(chunks),
+                "statistics": stats,
+                "elasticsearch_indexed": elasticsearch_success
+            }
                 
         except Exception as e:
             self.logger.error(f"Pipeline error for document {document.get('id', 'unknown')}: {str(e)}")
