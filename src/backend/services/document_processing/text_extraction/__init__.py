@@ -54,4 +54,4 @@ def is_supported(file_path: Union[str, Path]) -> bool:
     ext = Path(file_path).suffix.lower()
     return ext in _service.extractors
 
-__all__ = ['extract', 'extract_batch', 'is_supported', 'ExtractionResult', 'TextExtractionService'] 
+__all__ = ['extract_text', 'extract_batch', 'is_supported', 'ExtractionResult', 'TextExtractionService'] 

@@ -205,6 +205,13 @@ class DocumentChunkingService:
         
         return all_chunks
     
-    def __del__(self):
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         if hasattr(self, 'executor'):
             self.executor.shutdown(wait=True)
+    
+    def __del__(self):
+        if hasattr(self, 'executor'):
+            self.executor.shutdown(wait=False)

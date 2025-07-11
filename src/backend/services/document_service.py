@@ -44,6 +44,7 @@ class DocumentService:
                 
                 document.processing_status = ProcessingStatus.PROCESSING
                 db.commit()
+                logger.info(f"Document {document_id} status updated to PROCESSING")
                 
                 file_content = await self._download_document(document.document_url)
                 if not file_content:
@@ -95,12 +96,14 @@ class DocumentService:
             logger.error(f"Error processing document {document_id}: {str(e)}", exc_info=True)
             try:
                 db = next(get_db())
-                document = db.query(Document).filter(Document.id == document_id).first()
-                if document:
-                    self._update_document_error(db, document, f"Processing error: {str(e)}")
-                db.close()
-            except:
-                pass
+                try:
+                    document = db.query(Document).filter(Document.id == document_id).first()
+                    if document:
+                        self._update_document_error(db, document, f"Processing error: {str(e)}")
+                finally:
+                    db.close()
+            except Exception as cleanup_error:
+                logger.error(f"Failed to update error status for document {document_id}: {cleanup_error}")
             return False
     
     async def _download_document(self, s3_url: str) -> Optional[bytes]:
@@ -127,6 +130,11 @@ class DocumentService:
         """Extract text from file content asynchronously."""
         import tempfile
         import aiofiles
+        import asyncio
+        from pathlib import Path
+        from .document_processing.text_extraction.text_extractor import PlainTextExtractor
+        from .document_processing.text_extraction.pdf_extractor import PDFExtractor
+        from .document_processing.text_extraction.docx_extractor import DOCXExtractor
         
         # Create temp file with async I/O
         temp_dir = tempfile.gettempdir()
@@ -138,13 +146,26 @@ class DocumentService:
             async with aiofiles.open(temp_path, 'wb') as temp_file:
                 await temp_file.write(file_content)
             
-            # Extract text (CPU-bound, so use thread pool)
-            import asyncio
-            return await asyncio.to_thread(extract_text, temp_path)
+            # Choose extractor based on file extension
+            file_path = Path(temp_path)
+            ext = Path(filename).suffix.lower()
+            
+            if ext == '.pdf':
+                extractor = PDFExtractor()
+            elif ext in ['.docx', '.doc']:
+                extractor = DOCXExtractor()
+            else:
+                extractor = PlainTextExtractor()
+            
+            # Use async extraction if available, otherwise use thread pool
+            if hasattr(extractor, 'extract_async'):
+                return await extractor.extract_async(file_path)
+            else:
+                return await asyncio.to_thread(extractor.extract, file_path)
         finally:
-            # Clean up temp file
+            # Clean up temp file asynchronously
             try:
-                await asyncio.to_thread(os.unlink, temp_path)
+                await aiofiles.os.remove(temp_path)
             except:
                 pass
     

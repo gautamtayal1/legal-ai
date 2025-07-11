@@ -28,12 +28,21 @@ class ElasticsearchService:
         )
         
         self._index_initialized = False
+        self._init_lock = asyncio.Lock()
     
     async def _create_index(self):
-        """Create index if it doesn't exist"""
-        try:
-            exists = await self.client.indices.exists(index=self.config.index_name)
-            if not exists:
+        """Create index if it doesn't exist (thread-safe)"""
+        async with self._init_lock:
+            if self._index_initialized:
+                return
+                
+            try:
+                exists = await self.client.indices.exists(index=self.config.index_name)
+                if exists:
+                    self.logger.info(f"Index {self.config.index_name} exists")
+                    self._index_initialized = True
+                    return
+                    
                 mapping = {
                     "mappings": {
                         "properties": {
@@ -61,15 +70,14 @@ class ElasticsearchService:
                     body=mapping
                 )
                 self.logger.info(f"Created index: {self.config.index_name}")
-        except Exception as e:
-            self.logger.error(f"Failed to create index: {str(e)}")
+                self._index_initialized = True
+            except Exception as e:
+                self.logger.error(f"Failed to create index: {str(e)}")
     
     async def index_chunks(self, chunks: List[DocumentChunk]) -> bool:
         """Index chunks asynchronously"""
         # Ensure index exists before indexing
-        if not self._index_initialized:
-            await self._create_index()
-            self._index_initialized = True
+        await self._create_index()
             
         try:
             docs = []
@@ -120,9 +128,7 @@ class ElasticsearchService:
                    filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Search text asynchronously"""
         # Ensure index exists before searching
-        if not self._index_initialized:
-            await self._create_index()
-            self._index_initialized = True
+        await self._create_index()
             
         search_body = {
             "query": {
