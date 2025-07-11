@@ -109,3 +109,6 @@ alembic==1.16.3
 boto3==1.34.103
 svix==1.69.0
 
+# Elasticsearch for search functionality
+elasticsearch>=8.0.0
+

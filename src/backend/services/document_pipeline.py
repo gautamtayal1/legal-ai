@@ -74,7 +74,6 @@ class DocumentPipeline:
             except Exception as e:
                 return {"success": False, "error": f"Embedding generation failed: {str(e)}"}
             
-            # Store in vector database
             try:
                 vector_success = self.vector_storage.store_embeddings(embedded_chunks)
                 if not vector_success:
@@ -82,19 +81,15 @@ class DocumentPipeline:
             except Exception as e:
                 return {"success": False, "error": f"Vector storage failed: {str(e)}"}
             
-            # Index in Elasticsearch (optional)
             elasticsearch_success = True
             if self.elasticsearch:
                 try:
                     elasticsearch_success = self.elasticsearch.index_chunks(chunks)
                     if not elasticsearch_success:
                         self.logger.warning(f"Elasticsearch indexing failed for document {document_id}, but continuing")
-                        # Don't fail the whole process for Elasticsearch issues
                 except Exception as e:
                     self.logger.warning(f"Elasticsearch indexing error for document {document_id}: {str(e)}")
-                    # Don't fail the whole process for Elasticsearch issues
-            
-            # Success!
+
             stats = self.chunking_service.get_chunk_statistics(chunks)
             return {
                 "success": True,

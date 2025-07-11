@@ -7,4 +7,5 @@ alwaysApply: false
 - Check if the code you write is not affecting the performance of the app.
 - Don't write code you are not sure about. Instead add todo comments in that part.
 - Whenever asked to make a new component, make sure you stick to the existing design.
-- Don't use gradient colors in design until specifically asked.
+- Don't use gradient colors in design until specifically asked
+- Don't hardcode any values in the code. Use environment variables instead.

@@ -1,17 +1,18 @@
 import uuid
 import logging
+import os
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 import chromadb
 from chromadb.config import Settings
-from chromadb.utils import embedding_functions
 
 from ..document_processing.chunking.base import DocumentChunk
 
 
 @dataclass
 class VectorStorageConfig:
-    persist_directory: str = "./chroma_db"
+    host: str = os.getenv("CHROMADB_HOST", "localhost")
+    port: int = int(os.getenv("CHROMADB_PORT", "8000"))
     collection_name: str = "legal_documents"
     distance_metric: str = "cosine"
     max_results: int = 50
@@ -22,8 +23,10 @@ class VectorStorageService:
         self.config = config or VectorStorageConfig()
         self.logger = logging.getLogger(__name__)
         
-        self.client = chromadb.PersistentClient(
-            path=self.config.persist_directory,
+        # Use HTTP client to connect to ChromaDB Docker service
+        self.client = chromadb.HttpClient(
+            host=self.config.host,
+            port=self.config.port,
             settings=Settings(anonymized_telemetry=False)
         )
         
@@ -92,10 +95,10 @@ class VectorStorageService:
             return False
     
     def search_similar(self, 
-                      query_embedding: List[float], 
-                      n_results: Optional[int] = None,
-                      document_id: Optional[str] = None,
-                      filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+                    query_embedding: List[float], 
+                    n_results: Optional[int] = None,
+                    document_id: Optional[str] = None,
+                    filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         
         n_results = n_results or min(10, self.config.max_results)
         

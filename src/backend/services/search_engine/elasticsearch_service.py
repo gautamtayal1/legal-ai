@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from elasticsearch import Elasticsearch
@@ -9,8 +10,8 @@ from ..document_processing.chunking.base import DocumentChunk
 
 @dataclass
 class ElasticsearchConfig:
-    host: str = "localhost"
-    port: int = 9200
+    host: str = os.getenv("ELASTICSEARCH_HOST", "localhost")
+    port: int = int(os.getenv("ELASTICSEARCH_PORT", "9200"))
     index_name: str = "legal_documents"
     timeout: int = 30
 
@@ -101,10 +102,10 @@ class ElasticsearchService:
             return False
     
     def search_text(self, 
-                   query: str, 
-                   size: int = 10,
-                   document_id: Optional[str] = None,
-                   filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+                query: str, 
+                size: int = 10,
+                document_id: Optional[str] = None,
+                filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         
         search_body = {
             "query": {
