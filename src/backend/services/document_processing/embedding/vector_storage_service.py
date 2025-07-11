@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import chromadb
 from chromadb.config import Settings
 
-from ..document_processing.chunking.base import DocumentChunk
+from ..chunking.base import DocumentChunk
 
 
 @dataclass

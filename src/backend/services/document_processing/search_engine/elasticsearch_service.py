@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import NotFoundError, RequestError
 
-from ..document_processing.chunking.base import DocumentChunk
+from ..chunking.base import DocumentChunk
 
 
 @dataclass

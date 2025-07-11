@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import openai
 from openai import AsyncOpenAI
 
-from ..document_processing.chunking.base import DocumentChunk
+from ..chunking.base import DocumentChunk
 
 
 @dataclass

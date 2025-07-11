@@ -5,9 +5,9 @@ from dataclasses import dataclass
 
 from .document_processing.chunking.chunking_service import DocumentChunkingService
 from .document_processing.chunking.base import ChunkingStrategy, ChunkConfig
-from .embedding.embedding_service import EmbeddingService, EmbeddingConfig
-from .embedding.vector_storage_service import VectorStorageService, VectorStorageConfig
-from .search_engine.elasticsearch_service import ElasticsearchService, ElasticsearchConfig
+from .document_processing.embedding.embedding_service import EmbeddingService, EmbeddingConfig
+from .document_processing.embedding.vector_storage_service import VectorStorageService, VectorStorageConfig
+from .document_processing.search_engine.elasticsearch_service import ElasticsearchService, ElasticsearchConfig
 
 
 @dataclass
