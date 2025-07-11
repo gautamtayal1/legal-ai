@@ -74,7 +74,7 @@ async def upload_document(
     
     try:
         logging.info(f"Uploading file '{file.filename}' to S3...")
-        s3_key, s3_url = upload_file(file_content, file.filename)
+        s3_key, s3_url = await upload_file(file_content, file.filename)
         logging.info(f"File uploaded to S3: key={s3_key}, url={s3_url}")
         
         document = Document(
@@ -84,7 +84,7 @@ async def upload_document(
             file_size=file_size,
             thread_id=thread_id,
             user_id=user_id,
-            processing_status=ProcessingStatus.PENDING,
+            processing_status=ProcessingStatus.UPLOADED,
         )
         
         db.add(document)

@@ -119,7 +119,8 @@ class DocumentService:
             else:
                 s3_key = s3_url
             
-            return download_file(s3_key)
+            import asyncio
+            return asyncio.run(download_file(s3_key))
         except Exception as e:
             logger.error(f"Failed to download file from S3: {str(e)}")
             return None
@@ -164,18 +165,28 @@ class DocumentService:
 
 def start_processing_background(document_id: int) -> bool:
     """
-    Entry point for background processing.
-    This function will be called by the API.
+    Entry point for TRUE background processing.
+    This function will be called by the API and returns immediately.
     """
-    try:
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        if not openai_api_key:
-            logger.error("OPENAI_API_KEY not found in environment variables")
-            return False
-        
-        service = DocumentService(openai_api_key)
-        return service.process_document(document_id)
-        
-    except Exception as e:
-        logger.error(f"Failed to start processing for document {document_id}: {str(e)}")
-        return False 
+    import threading
+    
+    def process_in_background():
+        """This runs in a separate thread."""
+        try:
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+            if not openai_api_key:
+                logger.error("OPENAI_API_KEY not found in environment variables")
+                return False
+            
+            service = DocumentService(openai_api_key)
+            service.process_document(document_id)
+            
+        except Exception as e:
+            logger.error(f"Background processing failed for document {document_id}: {str(e)}")
+    
+    # Start processing in background thread
+    thread = threading.Thread(target=process_in_background, daemon=True)
+    thread.start()
+    
+    logger.info(f"Started background processing thread for document {document_id}")
+    return True  # Return immediately! 

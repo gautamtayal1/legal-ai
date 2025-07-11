@@ -1,8 +1,9 @@
 import os
 import uuid
 from typing import Tuple
+import asyncio
 
-import boto3
+import aioboto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
@@ -13,18 +14,8 @@ AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 S3_BUCKET = os.getenv("S3_BUCKET_NAME")
 
-def _get_s3_client():
-    """Create and cache an S3 client"""
-    return boto3.client(
-        "s3",
-        region_name=AWS_REGION,
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    )
-
-
-def upload_file(file_bytes: bytes, filename: str) -> Tuple[str, str]:
-    """Upload file bytes to S3.
+async def upload_file(file_bytes: bytes, filename: str) -> Tuple[str, str]:
+    """Upload file bytes to S3 asynchronously.
 
     Returns
     -------
@@ -33,24 +24,40 @@ def upload_file(file_bytes: bytes, filename: str) -> Tuple[str, str]:
     url: str
         The accessible URL to the object.
     """
-    s3 = _get_s3_client()
+    session = aioboto3.Session()
+    
     # Create unique key
     unique_key = f"uploads/{uuid.uuid4()}_{filename}"
-    try:
-        s3.put_object(Bucket=S3_BUCKET, Key=unique_key, Body=file_bytes)
-    except ClientError as e:
-        raise RuntimeError(f"Failed to upload to S3: {e}") from e
+    
+    async with session.client(
+        "s3",
+        region_name=AWS_REGION,
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    ) as s3:
+        try:
+            await s3.put_object(Bucket=S3_BUCKET, Key=unique_key, Body=file_bytes)
+        except ClientError as e:
+            raise RuntimeError(f"Failed to upload to S3: {e}") from e
 
     url = f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{unique_key}"
     return unique_key, url
 
 
-def download_file(s3_key: str) -> bytes:
-    """Download file from S3.
+async def download_file(s3_key: str) -> bytes:
+    """Download file from S3 asynchronously.
     """
-    s3 = _get_s3_client()
-    try:
-        response = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
-        return response['Body'].read()
-    except ClientError as e:
-        raise RuntimeError(f"Failed to download from S3: {e}") from e 
+    session = aioboto3.Session()
+    
+    async with session.client(
+        "s3",
+        region_name=AWS_REGION,
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    ) as s3:
+        try:
+            response = await s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
+            async with response['Body'] as stream:
+                return await stream.read()
+        except ClientError as e:
+            raise RuntimeError(f"Failed to download from S3: {e}") from e 

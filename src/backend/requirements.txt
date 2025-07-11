@@ -112,3 +112,6 @@ svix==1.69.0
 # Elasticsearch for search functionality
 elasticsearch>=8.0.0
 
+# Async AWS SDK for non-blocking S3 operations
+aioboto3>=12.0.0
+

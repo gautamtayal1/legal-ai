@@ -14,7 +14,7 @@ The processing pipeline is designed to handle legal documents with high accuracy
 and proper citation tracking.
 """
 
-from .text_extraction import TextExtractionService, extract_text, extract_text_batch, is_supported, ExtractionResult
+from .text_extraction import TextExtractionService, extract_text, extract_batch, is_supported, ExtractionResult
 from .embedding import EmbeddingService, EmbeddingConfig, VectorStorageService, VectorStorageConfig
 from .search_engine import ElasticsearchService, ElasticsearchConfig
 
@@ -22,7 +22,7 @@ __all__ = [
     # Text extraction
     "TextExtractionService",
     "extract_text", 
-    "extract_text_batch",
+    "extract_batch",
     "is_supported",
     "ExtractionResult",
     
