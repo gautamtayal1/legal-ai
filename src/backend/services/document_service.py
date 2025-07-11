@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from .document_pipeline import DocumentPipeline
-from .document_processing.text_extraction import extract
+from .document_processing.text_extraction import extract_text
 from .document_processing.text_processing import process_text
 from ..models.document import Document, ProcessingStatus
 from ..utils.s3_service import download_file
@@ -27,7 +27,7 @@ class DocumentService:
             openai_api_key=openai_api_key
         )
         
-    def process_document(self, document_id: int) -> bool:
+    async def process_document(self, document_id: int) -> bool:
         """
         Process a document asynchronously.
         This would be the main entry point called by the API.
@@ -45,12 +45,12 @@ class DocumentService:
                 document.processing_status = ProcessingStatus.PROCESSING
                 db.commit()
                 
-                file_content = self._download_document(document.document_url)
+                file_content = await self._download_document(document.document_url)
                 if not file_content:
                     self._update_document_error(db, document, "Failed to download file from S3")
                     return False
                 
-                extraction_result = self._extract(file_content)
+                extraction_result = await self._extract_text(file_content, document.filename)
                 if extraction_result.error:
                     self._update_document_error(db, document, f"Text extraction failed: {extraction_result.error}")
                     return False
@@ -76,8 +76,7 @@ class DocumentService:
                     }
                 }
                 
-                import asyncio
-                result = asyncio.run(self.pipeline.process_document(pipeline_doc))
+                result = await self.pipeline.process_document(pipeline_doc)
                 
                 if result.get("success"):
                     document.processing_status = ProcessingStatus.READY
@@ -104,7 +103,7 @@ class DocumentService:
                 pass
             return False
     
-    def _download_document(self, s3_url: str) -> Optional[bytes]:
+    async def _download_document(self, s3_url: str) -> Optional[bytes]:
         """Download document content from S3."""
         try:
             # Extract S3 key from URL
@@ -119,48 +118,54 @@ class DocumentService:
             else:
                 s3_key = s3_url
             
-            import asyncio
-            return asyncio.run(download_file(s3_key))
+            return await download_file(s3_key)
         except Exception as e:
             logger.error(f"Failed to download file from S3: {str(e)}")
             return None
     
-    def _extract_text(self, file_content: bytes, filename: str):
-        """Extract text from file content."""
-        # Save content to temporary file for extraction
+    async def _extract_text(self, file_content: bytes, filename: str):
+        """Extract text from file content asynchronously."""
         import tempfile
-        with tempfile.NamedTemporaryFile(suffix=f"_{filename}", delete=False) as temp_file:
-            temp_file.write(file_content)
-            temp_path = temp_file.name
+        import aiofiles
+        
+        # Create temp file with async I/O
+        temp_dir = tempfile.gettempdir()
+        temp_filename = f"temp_{filename}_{os.getpid()}"
+        temp_path = os.path.join(temp_dir, temp_filename)
         
         try:
-            return extract_text(temp_path)
+            # Write file asynchronously
+            async with aiofiles.open(temp_path, 'wb') as temp_file:
+                await temp_file.write(file_content)
+            
+            # Extract text (CPU-bound, so use thread pool)
+            import asyncio
+            return await asyncio.to_thread(extract_text, temp_path)
         finally:
             # Clean up temp file
             try:
-                os.unlink(temp_path)
+                await asyncio.to_thread(os.unlink, temp_path)
             except:
                 pass
     
     def _update_document_error(self, db: Session, document: Document, error_message: str):
         """Update document with error status and message."""
-        document.processing_status = ProcessingStatus.ERROR
+        document.processing_status = ProcessingStatus.FAILED
         document.error_message = error_message
         db.commit()
         logger.error(f"Document {document.id} processing failed: {error_message}")
     
-    def search_documents(self, query: str, user_id: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
+    async def search_documents(self, query: str, user_id: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
         """Search documents for a user."""
         filters = {"user_id": user_id}
         if thread_id:
             filters["thread_id"] = thread_id
             
-        import asyncio
-        return asyncio.run(self.pipeline.search_documents(query, filters=filters))
+        return await self.pipeline.search_documents(query, filters=filters)
     
-    def get_document_stats(self, document_id: str) -> Dict[str, Any]:
+    async def get_document_stats(self, document_id: str) -> Dict[str, Any]:
         """Get processing statistics for a document."""
-        return self.pipeline.get_document_stats(document_id)
+        return await self.pipeline.get_document_stats(document_id)
 
 
 def start_processing_background(document_id: int) -> bool:
@@ -179,7 +184,10 @@ def start_processing_background(document_id: int) -> bool:
                 return False
             
             service = DocumentService(openai_api_key)
-            service.process_document(document_id)
+            
+            # Run the async process_document in this thread's event loop
+            import asyncio
+            asyncio.run(service.process_document(document_id))
             
         except Exception as e:
             logger.error(f"Background processing failed for document {document_id}: {str(e)}")

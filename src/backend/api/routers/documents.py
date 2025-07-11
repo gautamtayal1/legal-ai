@@ -84,7 +84,7 @@ async def upload_document(
             file_size=file_size,
             thread_id=thread_id,
             user_id=user_id,
-            processing_status=ProcessingStatus.UPLOADED,
+            processing_status=ProcessingStatus.PENDING,
         )
         
         db.add(document)

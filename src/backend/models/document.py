@@ -5,7 +5,8 @@ from enum import Enum as PyEnum
 from . import Base
 
 class ProcessingStatus(PyEnum):
-    UPLOADED = "uploaded"
+    PENDING = "pending"
+    UPLOADING = "uploading"
     EXTRACTING = "extracting"
     PROCESSING = "processing"  
     CHUNKING = "chunking"

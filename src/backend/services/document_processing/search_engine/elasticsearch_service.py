@@ -1,8 +1,9 @@
 import logging
 import os
+import asyncio
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
-from elasticsearch import Elasticsearch
+from elasticsearch import AsyncElasticsearch
 from elasticsearch.exceptions import NotFoundError, RequestError
 
 from ..chunking.base import DocumentChunk
@@ -21,44 +22,55 @@ class ElasticsearchService:
         self.config = config or ElasticsearchConfig()
         self.logger = logging.getLogger(__name__)
         
-        self.client = Elasticsearch(
+        self.client = AsyncElasticsearch(
             hosts=[{"host": self.config.host, "port": self.config.port}],
             timeout=self.config.timeout
         )
         
-        self._create_index()
+        self._index_initialized = False
     
-    def _create_index(self):
-        if not self.client.indices.exists(index=self.config.index_name):
-            mapping = {
-                "mappings": {
-                    "properties": {
-                        "content": {"type": "text", "analyzer": "standard"},
-                        "document_id": {"type": "keyword"},
-                        "chunk_id": {"type": "keyword"},
-                        "chunk_index": {"type": "integer"},
-                        "start_position": {"type": "integer"},
-                        "end_position": {"type": "integer"},
-                        "parent_section": {"type": "keyword"},
-                        "document_type": {"type": "keyword"},
-                        "practice_area": {"type": "keyword"},
-                        "date_created": {"type": "date"},
-                        "has_legal_context": {"type": "boolean"},
-                        "legal_definitions": {"type": "text"},
-                        "legal_obligations": {"type": "text"},
-                        "legal_parties": {"type": "text"},
-                        "content_length": {"type": "integer"}
+    async def _create_index(self):
+        """Create index if it doesn't exist"""
+        try:
+            exists = await self.client.indices.exists(index=self.config.index_name)
+            if not exists:
+                mapping = {
+                    "mappings": {
+                        "properties": {
+                            "content": {"type": "text", "analyzer": "standard"},
+                            "document_id": {"type": "keyword"},
+                            "chunk_id": {"type": "keyword"},
+                            "chunk_index": {"type": "integer"},
+                            "start_position": {"type": "integer"},
+                            "end_position": {"type": "integer"},
+                            "parent_section": {"type": "keyword"},
+                            "document_type": {"type": "keyword"},
+                            "practice_area": {"type": "keyword"},
+                            "date_created": {"type": "date"},
+                            "has_legal_context": {"type": "boolean"},
+                            "legal_definitions": {"type": "text"},
+                            "legal_obligations": {"type": "text"},
+                            "legal_parties": {"type": "text"},
+                            "content_length": {"type": "integer"}
+                        }
                     }
                 }
-            }
-            
-            self.client.indices.create(
-                index=self.config.index_name,
-                body=mapping
-            )
-            self.logger.info(f"Created index: {self.config.index_name}")
+                
+                await self.client.indices.create(
+                    index=self.config.index_name,
+                    body=mapping
+                )
+                self.logger.info(f"Created index: {self.config.index_name}")
+        except Exception as e:
+            self.logger.error(f"Failed to create index: {str(e)}")
     
-    def index_chunks(self, chunks: List[DocumentChunk]) -> bool:
+    async def index_chunks(self, chunks: List[DocumentChunk]) -> bool:
+        """Index chunks asynchronously"""
+        # Ensure index exists before indexing
+        if not self._index_initialized:
+            await self._create_index()
+            self._index_initialized = True
+            
         try:
             docs = []
             for chunk in chunks:
@@ -88,8 +100,8 @@ class ElasticsearchService:
                 
                 docs.append(doc)
             
-            from elasticsearch.helpers import bulk
-            success, failed = bulk(self.client, docs, refresh=True)
+            from elasticsearch.helpers import async_bulk
+            success, failed = await async_bulk(self.client, docs, refresh=True)
             
             self.logger.info(f"Indexed {success} chunks successfully")
             if failed:
@@ -100,13 +112,18 @@ class ElasticsearchService:
         except Exception as e:
             self.logger.error(f"Failed to index chunks: {str(e)}")
             return False
-    
-    def search_text(self, 
-                query: str, 
-                size: int = 10,
-                document_id: Optional[str] = None,
-                filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        
+
+    async def search_text(self, 
+                   query: str, 
+                   size: int = 10,
+                   document_id: Optional[str] = None,
+                   filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Search text asynchronously"""
+        # Ensure index exists before searching
+        if not self._index_initialized:
+            await self._create_index()
+            self._index_initialized = True
+            
         search_body = {
             "query": {
                 "bool": {
@@ -133,7 +150,7 @@ class ElasticsearchService:
             search_body["query"]["bool"]["filter"] = filter_clauses
         
         try:
-            response = self.client.search(
+            response = await self.client.search(
                 index=self.config.index_name,
                 body=search_body
             )
@@ -154,11 +171,12 @@ class ElasticsearchService:
         except Exception as e:
             self.logger.error(f"Search failed: {str(e)}")
             return []
-    
-    def search_legal_content(self, 
+
+    async def search_legal_content(self, 
                            query: str,
                            content_type: str = "all",
                            size: int = 10) -> List[Dict[str, Any]]:
+        """Search legal content asynchronously"""
         
         search_fields = []
         if content_type == "definitions" or content_type == "all":
@@ -188,7 +206,7 @@ class ElasticsearchService:
         }
         
         try:
-            response = self.client.search(
+            response = await self.client.search(
                 index=self.config.index_name,
                 body=search_body
             )
@@ -207,10 +225,10 @@ class ElasticsearchService:
         except Exception as e:
             self.logger.error(f"Legal content search failed: {str(e)}")
             return []
-    
-    def get_document_by_id(self, doc_id: str) -> Optional[Dict[str, Any]]:
+
+    async def get_document_by_id(self, doc_id: str) -> Optional[Dict[str, Any]]:
         try:
-            response = self.client.get(
+            response = await self.client.get(
                 index=self.config.index_name,
                 id=doc_id
             )
@@ -221,10 +239,11 @@ class ElasticsearchService:
         except Exception as e:
             self.logger.error(f"Failed to get document: {str(e)}")
             return None
-    
-    def delete_document(self, document_id: str) -> bool:
+
+    async def delete_document(self, document_id: str) -> bool:
+        """Delete document asynchronously"""
         try:
-            self.client.delete_by_query(
+            await self.client.delete_by_query(
                 index=self.config.index_name,
                 body={"query": {"term": {"document_id": document_id}}},
                 refresh=True
@@ -235,11 +254,12 @@ class ElasticsearchService:
         except Exception as e:
             self.logger.error(f"Failed to delete document: {str(e)}")
             return False
-    
-    def get_index_stats(self) -> Dict[str, Any]:
+
+    async def get_index_stats(self) -> Dict[str, Any]:
+        """Get index statistics asynchronously"""
         try:
-            stats = self.client.indices.stats(index=self.config.index_name)
-            count = self.client.count(index=self.config.index_name)
+            stats = await self.client.indices.stats(index=self.config.index_name)
+            count = await self.client.count(index=self.config.index_name)
             
             return {
                 "total_documents": count["count"],
@@ -250,10 +270,30 @@ class ElasticsearchService:
         except Exception as e:
             self.logger.error(f"Failed to get index stats: {str(e)}")
             return {}
-    
-    def health_check(self) -> bool:
+
+    async def health_check(self) -> bool:
+        """Check Elasticsearch health asynchronously"""
         try:
-            health = self.client.cluster.health()
+            health = await self.client.cluster.health()
             return health["status"] in ["green", "yellow"]
         except Exception:
             return False
+
+    # Sync wrappers for backward compatibility
+    def index_chunks_sync(self, chunks: List[DocumentChunk]) -> bool:
+        """Sync wrapper for backward compatibility"""
+        return asyncio.run(self.index_chunks(chunks))
+    
+    def search_text_sync(self, query: str, **kwargs) -> List[Dict[str, Any]]:
+        """Sync wrapper for backward compatibility"""
+        return asyncio.run(self.search_text(query, **kwargs))
+    
+    def delete_document_sync(self, document_id: str) -> bool:
+        """Sync wrapper for backward compatibility"""
+        return asyncio.run(self.delete_document(document_id))
+
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.close()

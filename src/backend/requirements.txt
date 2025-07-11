@@ -115,3 +115,12 @@ elasticsearch>=8.0.0
 # Async AWS SDK for non-blocking S3 operations
 aioboto3>=12.0.0
 
+# Async HTTP client for ChromaDB API calls
+httpx>=0.27.0
+
+# Async Elasticsearch client
+elasticsearch[async]>=8.0.0
+
+# Async file operations
+aiofiles>=24.1.0
+

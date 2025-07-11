@@ -1,10 +1,10 @@
 import uuid
 import logging
 import os
+import asyncio
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
-import chromadb
-from chromadb.config import Settings
+import httpx
 
 from ..chunking.base import DocumentChunk
 
@@ -22,28 +22,44 @@ class VectorStorageService:
     def __init__(self, config: Optional[VectorStorageConfig] = None):
         self.config = config or VectorStorageConfig()
         self.logger = logging.getLogger(__name__)
-        
-        # Use HTTP client to connect to ChromaDB Docker service
-        self.client = chromadb.HttpClient(
-            host=self.config.host,
-            port=self.config.port,
-            settings=Settings(anonymized_telemetry=False)
-        )
-        
-        self.collection = self._get_or_create_collection()
+        self.base_url = f"http://{self.config.host}:{self.config.port}/api/v1"
+        self._collection_initialized = False
     
-    def _get_or_create_collection(self):
-        try:
-            return self.client.get_collection(
-                name=self.config.collection_name
-            )
-        except Exception:
-            return self.client.create_collection(
-                name=self.config.collection_name,
-                metadata={"hnsw:space": self.config.distance_metric}
-            )
-    
-    def store_embeddings(self, embedded_chunks: List[Dict[str, Any]]) -> bool:
+    async def _ensure_collection_exists(self):
+        """Ensure the collection exists, create if it doesn't"""
+        async with httpx.AsyncClient() as client:
+            try:
+                # Try to get collection
+                response = await client.get(f"{self.base_url}/collections/{self.config.collection_name}")
+                if response.status_code == 200:
+                    self.logger.info(f"Collection {self.config.collection_name} exists")
+                    return
+            except Exception:
+                pass
+            
+            try:
+                # Create collection if it doesn't exist
+                response = await client.post(
+                    f"{self.base_url}/collections",
+                    json={
+                        "name": self.config.collection_name,
+                        "metadata": {"hnsw:space": self.config.distance_metric}
+                    }
+                )
+                if response.status_code in [200, 201]:
+                    self.logger.info(f"Created collection {self.config.collection_name}")
+                else:
+                    self.logger.error(f"Failed to create collection: {response.text}")
+            except Exception as e:
+                self.logger.error(f"Error creating collection: {str(e)}")
+
+    async def store_embeddings(self, embedded_chunks: List[Dict[str, Any]]) -> bool:
+        """Store embeddings asynchronously using HTTP API"""
+        # Ensure collection exists before storing
+        if not self._collection_initialized:
+            await self._ensure_collection_exists()
+            self._collection_initialized = True
+            
         try:
             ids = []
             embeddings = []
@@ -80,26 +96,40 @@ class VectorStorageService:
                 
                 metadatas.append(chunk_metadata)
             
-            self.collection.add(
-                ids=ids,
-                embeddings=embeddings,
-                documents=documents,
-                metadatas=metadatas
-            )
-            
-            self.logger.info(f"Stored {len(embedded_chunks)} embeddings successfully")
-            return True
+            # Async HTTP call to ChromaDB
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/collections/{self.config.collection_name}/add",
+                    json={
+                        "ids": ids,
+                        "embeddings": embeddings,
+                        "documents": documents,
+                        "metadatas": metadatas
+                    }
+                )
+                
+                if response.status_code in [200, 201]:
+                    self.logger.info(f"Stored {len(embedded_chunks)} embeddings successfully")
+                    return True
+                else:
+                    self.logger.error(f"Failed to store embeddings: {response.text}")
+                    return False
             
         except Exception as e:
             self.logger.error(f"Failed to store embeddings: {str(e)}")
             return False
-    
-    def search_similar(self, 
+
+    async def search_similar(self, 
                     query_embedding: List[float], 
                     n_results: Optional[int] = None,
                     document_id: Optional[str] = None,
                     filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        
+        """Search similar embeddings asynchronously"""
+        # Ensure collection exists before searching
+        if not self._collection_initialized:
+            await self._ensure_collection_exists()
+            self._collection_initialized = True
+            
         n_results = n_results or min(10, self.config.max_results)
         
         where_clause = {}
@@ -109,107 +139,117 @@ class VectorStorageService:
             where_clause.update(filters)
         
         try:
-            results = self.collection.query(
-                query_embeddings=[query_embedding],
-                n_results=n_results,
-                where=where_clause if where_clause else None,
-                include=["documents", "metadatas", "distances"]
-            )
-            
-            search_results = []
-            for i in range(len(results["ids"][0])):
-                search_results.append({
-                    "id": results["ids"][0][i],
-                    "content": results["documents"][0][i],
-                    "metadata": results["metadatas"][0][i],
-                    "distance": results["distances"][0][i],
-                    "similarity": 1 - results["distances"][0][i]
-                })
-            
-            return search_results
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/collections/{self.config.collection_name}/query",
+                    json={
+                        "query_embeddings": [query_embedding],
+                        "n_results": n_results,
+                        "where": where_clause if where_clause else None,
+                        "include": ["documents", "metadatas", "distances"]
+                    }
+                )
+                
+                if response.status_code == 200:
+                    results = response.json()
+                    
+                    search_results = []
+                    for i in range(len(results["ids"][0])):
+                        search_results.append({
+                            "id": results["ids"][0][i],
+                            "content": results["documents"][0][i],
+                            "metadata": results["metadatas"][0][i],
+                            "distance": results["distances"][0][i],
+                            "similarity": 1 - results["distances"][0][i]
+                        })
+                    
+                    return search_results
+                else:
+                    self.logger.error(f"Search failed: {response.text}")
+                    return []
             
         except Exception as e:
             self.logger.error(f"Failed to search similar chunks: {str(e)}")
             return []
-    
-    def get_chunk_by_id(self, chunk_id: str) -> Optional[Dict[str, Any]]:
+
+    async def delete_document(self, document_id: str) -> bool:
+        """Delete document chunks asynchronously"""
         try:
-            result = self.collection.get(
-                ids=[chunk_id],
-                include=["documents", "metadatas"]
-            )
-            
-            if result["ids"]:
-                return {
-                    "id": result["ids"][0],
-                    "content": result["documents"][0],
-                    "metadata": result["metadatas"][0]
-                }
-            return None
-            
-        except Exception as e:
-            self.logger.error(f"Failed to get chunk by ID: {str(e)}")
-            return None
-    
-    def delete_document(self, document_id: str) -> bool:
-        try:
-            self.collection.delete(
-                where={"document_id": document_id}
-            )
-            self.logger.info(f"Deleted all chunks for document {document_id}")
-            return True
-            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/collections/{self.config.collection_name}/delete",
+                    json={
+                        "where": {"document_id": document_id}
+                    }
+                )
+                
+                if response.status_code == 200:
+                    self.logger.info(f"Deleted all chunks for document {document_id}")
+                    return True
+                else:
+                    self.logger.error(f"Failed to delete document: {response.text}")
+                    return False
+                    
         except Exception as e:
             self.logger.error(f"Failed to delete document chunks: {str(e)}")
             return False
-    
-    def delete_chunk(self, chunk_id: str) -> bool:
+
+    async def get_collection_stats(self) -> Dict[str, Any]:
+        """Get collection statistics asynchronously"""
         try:
-            self.collection.delete(ids=[chunk_id])
-            return True
-            
-        except Exception as e:
-            self.logger.error(f"Failed to delete chunk: {str(e)}")
-            return False
-    
-    def get_collection_stats(self) -> Dict[str, Any]:
-        try:
-            count = self.collection.count()
-            return {
-                "total_chunks": count,
-                "collection_name": self.config.collection_name,
-                "distance_metric": self.config.distance_metric
-            }
-            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/collections/{self.config.collection_name}/count"
+                )
+                
+                if response.status_code == 200:
+                    count = response.json()
+                    return {
+                        "total_chunks": count,
+                        "collection_name": self.config.collection_name,
+                        "distance_metric": self.config.distance_metric
+                    }
+                else:
+                    self.logger.error(f"Failed to get stats: {response.text}")
+                    return {}
+                    
         except Exception as e:
             self.logger.error(f"Failed to get collection stats: {str(e)}")
             return {}
-    
-    def list_documents(self) -> List[str]:
+
+    async def list_documents(self) -> List[str]:
+        """List all document IDs asynchronously"""
         try:
-            results = self.collection.get(
-                include=["metadatas"]
-            )
-            
-            document_ids = set()
-            for metadata in results["metadatas"]:
-                if "document_id" in metadata:
-                    document_ids.add(metadata["document_id"])
-            
-            return list(document_ids)
-            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/collections/{self.config.collection_name}/get",
+                    json={
+                        "include": ["metadatas"]
+                    }
+                )
+                
+                if response.status_code == 200:
+                    results = response.json()
+                    
+                    document_ids = set()
+                    for metadata in results["metadatas"]:
+                        if "document_id" in metadata:
+                            document_ids.add(metadata["document_id"])
+                    
+                    return list(document_ids)
+                else:
+                    self.logger.error(f"Failed to list documents: {response.text}")
+                    return []
+                    
         except Exception as e:
             self.logger.error(f"Failed to list documents: {str(e)}")
             return []
+
+    # Keep synchronous methods for backward compatibility but call async versions
+    def store_embeddings_sync(self, embedded_chunks: List[Dict[str, Any]]) -> bool:
+        """Sync wrapper for backward compatibility"""
+        return asyncio.run(self.store_embeddings(embedded_chunks))
     
-    def update_chunk_metadata(self, chunk_id: str, metadata: Dict[str, Any]) -> bool:
-        try:
-            self.collection.update(
-                ids=[chunk_id],
-                metadatas=[metadata]
-            )
-            return True
-            
-        except Exception as e:
-            self.logger.error(f"Failed to update chunk metadata: {str(e)}")
-            return False
+    def search_similar_sync(self, query_embedding: List[float], **kwargs) -> List[Dict[str, Any]]:
+        """Sync wrapper for backward compatibility"""
+        return asyncio.run(self.search_similar(query_embedding, **kwargs))

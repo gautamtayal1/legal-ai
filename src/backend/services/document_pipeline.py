@@ -75,20 +75,35 @@ class DocumentPipeline:
                 return {"success": False, "error": f"Embedding generation failed: {str(e)}"}
             
             try:
-                vector_success = self.vector_storage.store_embeddings(embedded_chunks)
-                if not vector_success:
-                    return {"success": False, "error": "Failed to store embeddings in vector database"}
-            except Exception as e:
-                return {"success": False, "error": f"Vector storage failed: {str(e)}"}
-            
-            elasticsearch_success = True
-            if self.elasticsearch:
-                try:
-                    elasticsearch_success = self.elasticsearch.index_chunks(chunks)
-                    if not elasticsearch_success:
+                if self.elasticsearch:
+                    vector_success, elasticsearch_success = await asyncio.gather(
+                        self.vector_storage.store_embeddings(embedded_chunks),
+                        self.elasticsearch.index_chunks(chunks),
+                        return_exceptions=True
+                    )
+                    
+                    # Handle vector storage result
+                    if isinstance(vector_success, Exception):
+                        return {"success": False, "error": f"Vector storage failed: {str(vector_success)}"}
+                    if not vector_success:
+                        return {"success": False, "error": "Failed to store embeddings in vector database"}
+                    
+                    # Handle elasticsearch result (non-critical)
+                    if isinstance(elasticsearch_success, Exception):
+                        self.logger.warning(f"Elasticsearch indexing error for document {document_id}: {str(elasticsearch_success)}")
+                        elasticsearch_success = False
+                    elif not elasticsearch_success:
                         self.logger.warning(f"Elasticsearch indexing failed for document {document_id}, but continuing")
-                except Exception as e:
-                    self.logger.warning(f"Elasticsearch indexing error for document {document_id}: {str(e)}")
+                        
+                else:
+                    # Only vector storage if Elasticsearch is disabled
+                    vector_success = await self.vector_storage.store_embeddings(embedded_chunks)
+                    if not vector_success:
+                        return {"success": False, "error": "Failed to store embeddings in vector database"}
+                    elasticsearch_success = True
+                    
+            except Exception as e:
+                return {"success": False, "error": f"Storage operations failed: {str(e)}"}
 
             stats = self.chunking_service.get_chunk_statistics(chunks)
             return {
@@ -132,7 +147,7 @@ class DocumentPipeline:
         try:
             query_embedding = await self.embedding_service.embed_query(query)
             
-            results = self.vector_storage.search_similar(
+            results = await self.vector_storage.search_similar(
                 query_embedding=query_embedding,
                 n_results=n_results,
                 document_id=document_id,
@@ -145,9 +160,10 @@ class DocumentPipeline:
             self.logger.error(f"Search error: {str(e)}")
             return []
     
-    def get_document_stats(self, document_id: str) -> Dict[str, Any]:
+    async def get_document_stats(self, document_id: str) -> Dict[str, Any]:
+        """Get document statistics using async operations"""
         try:
-            chunks = self.vector_storage.search_similar(
+            chunks = await self.vector_storage.search_similar(
                 query_embedding=[0.0] * self.embedding_service.get_embedding_dimension(),
                 document_id=document_id,
                 n_results=1000
@@ -173,18 +189,21 @@ class DocumentPipeline:
             self.logger.error(f"Stats error: {str(e)}")
             return {"error": str(e)}
     
-    def delete_document(self, document_id: str) -> bool:
-        vector_deleted = self.vector_storage.delete_document(document_id)
+    async def delete_document(self, document_id: str) -> bool:
+        """Delete document using async operations"""
+        vector_deleted = await self.vector_storage.delete_document(document_id)
         elasticsearch_deleted = True
         if self.elasticsearch:
-            elasticsearch_deleted = self.elasticsearch.delete_document(document_id)
+            elasticsearch_deleted = await self.elasticsearch.delete_document(document_id)
         return vector_deleted and elasticsearch_deleted
     
-    def list_documents(self) -> List[str]:
-        return self.vector_storage.list_documents()
+    async def list_documents(self) -> List[str]:
+        """List documents using async operations"""
+        return await self.vector_storage.list_documents()
     
-    def get_pipeline_stats(self) -> Dict[str, Any]:
-        storage_stats = self.vector_storage.get_collection_stats()
+    async def get_pipeline_stats(self) -> Dict[str, Any]:
+        """Get pipeline statistics using async operations"""
+        storage_stats = await self.vector_storage.get_collection_stats()
         
         stats = {
             "embedding_model": self.embedding_service.config.model,
@@ -197,32 +216,34 @@ class DocumentPipeline:
         }
         
         if self.elasticsearch:
-            elasticsearch_stats = self.elasticsearch.get_index_stats()
+            elasticsearch_stats = await self.elasticsearch.get_index_stats()
             stats.update({"elasticsearch": elasticsearch_stats})
         
         return stats
     
-    def search_text(self, 
+    async def search_text(self, 
                    query: str,
                    size: int = 10,
                    document_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Search text using async operations"""
         if not self.elasticsearch:
             return []
         
-        return self.elasticsearch.search_text(
+        return await self.elasticsearch.search_text(
             query=query,
             size=size,
             document_id=document_id
         )
     
-    def search_legal_content(self, 
+    async def search_legal_content(self, 
                            query: str,
                            content_type: str = "all",
                            size: int = 10) -> List[Dict[str, Any]]:
+        """Search legal content using async operations"""
         if not self.elasticsearch:
             return []
         
-        return self.elasticsearch.search_legal_content(
+        return await self.elasticsearch.search_legal_content(
             query=query,
             content_type=content_type,
             size=size
