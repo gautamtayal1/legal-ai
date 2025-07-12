@@ -4,7 +4,6 @@ Unified Document Service
 This service acts as the main orchestrator for document processing,
 connecting the API layer with the document processing pipeline.
 """
-
 import logging
 import os
 from typing import Optional, Dict, Any
@@ -133,9 +132,7 @@ class DocumentService:
         import aiofiles
         import asyncio
         from pathlib import Path
-        from .document_processing.text_extraction.text_extractor import PlainTextExtractor
-        from .document_processing.text_extraction.pdf_extractor import PDFExtractor
-        from .document_processing.text_extraction.docx_extractor import DOCXExtractor
+        from .document_processing.text_extraction import TextExtractionService
         
         temp_dir = tempfile.gettempdir()
         temp_filename = f"temp_{filename}_{os.getpid()}"
@@ -145,20 +142,21 @@ class DocumentService:
             async with aiofiles.open(temp_path, 'wb') as temp_file:
                 await temp_file.write(file_content)
             
+            service = TextExtractionService()
             file_path = Path(temp_path)
+            
             ext = Path(filename).suffix.lower()
+            if ext:
+                new_temp_path = temp_path + ext
+                await aiofiles.os.rename(temp_path, new_temp_path)
+                temp_path = new_temp_path
+                file_path = Path(temp_path)
             
-            if ext == '.pdf':
-                extractor = PDFExtractor()
-            elif ext in ['.docx', '.doc']:
-                extractor = DOCXExtractor()
-            else:
-                extractor = PlainTextExtractor()
+            result = await asyncio.to_thread(service.extract, file_path)
             
-            if hasattr(extractor, 'extract_async'):
-                return await extractor.extract_async(file_path)
-            else:
-                return await asyncio.to_thread(extractor.extract, file_path)
+            # Return the full ExtractionResult object
+            return result
+            
         finally:
             try:
                 await aiofiles.os.remove(temp_path)
@@ -166,7 +164,9 @@ class DocumentService:
                 pass
     
     def _update_document_error(self, db: Session, document: Document, error_message: str):
-        """Update document with error status and message."""
+        """
+        Update document with error status and message.
+        """
         document.processing_status = ProcessingStatus.FAILED
         document.error_message = error_message
         db.commit()

@@ -3,13 +3,13 @@ import logging
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
-from .document_processing.chunking.chunking_service import DocumentChunkingService
-from .document_processing.chunking.base import ChunkingStrategy, ChunkConfig
-from .document_processing.embedding.embedding_service import EmbeddingService, EmbeddingConfig
-from .document_processing.embedding.vector_storage_service import VectorStorageService, VectorStorageConfig
-from .document_processing.search_engine.elasticsearch_service import ElasticsearchService, ElasticsearchConfig
-from src.backend.models.document import ProcessingStatus
-from src.backend.core.database import get_db_session
+from services.document_processing.chunking.chunking_service import DocumentChunkingService
+from services.document_processing.chunking.base import ChunkingStrategy, ChunkConfig
+from services.document_processing.embedding.embedding_service import EmbeddingService, EmbeddingConfig
+from services.document_processing.embedding.vector_storage_service import VectorStorageService, VectorStorageConfig
+from services.document_processing.search_engine.elasticsearch_service import ElasticsearchService, ElasticsearchConfig
+from models.document import ProcessingStatus
+from core.database import get_db
 
 
 @dataclass
@@ -59,7 +59,7 @@ class DocumentPipeline:
             document_id = document.get("id", "")
             self.logger.info(f"Processing document {document_id}")
             
-            db = get_db_session()
+            db = next(get_db())
             document.processing_status = ProcessingStatus.CHUNKING
             db.commit()
             self.logger.info(f"Document {document_id} status updated to CHUNKING")
