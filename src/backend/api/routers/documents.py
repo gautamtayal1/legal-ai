@@ -49,7 +49,6 @@ async def upload_document(
     """Upload a document to S3 and save metadata to database."""
     logging.debug(f"Received upload request: filename={file.filename}, content_type={file.content_type}, thread_id={thread_id}, user_id={user_id}")
 
-    # Validate file type
     allowed_types = {
         "application/pdf": "pdf",
         "text/plain": "txt",
@@ -84,7 +83,7 @@ async def upload_document(
             file_size=file_size,
             thread_id=thread_id,
             user_id=user_id,
-            processing_status=ProcessingStatus.PENDING,
+            processing_status=ProcessingStatus.UPLOADED,
         )
         
         db.add(document)
@@ -92,7 +91,6 @@ async def upload_document(
         db.refresh(document)
         logging.info(f"Document metadata saved to DB: id={document.id}")
 
-        # Start background processing
         logging.info(f"Starting background processing for document id={document.id}")
         start_processing_background(document.id)
         

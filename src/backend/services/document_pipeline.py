@@ -8,6 +8,8 @@ from .document_processing.chunking.base import ChunkingStrategy, ChunkConfig
 from .document_processing.embedding.embedding_service import EmbeddingService, EmbeddingConfig
 from .document_processing.embedding.vector_storage_service import VectorStorageService, VectorStorageConfig
 from .document_processing.search_engine.elasticsearch_service import ElasticsearchService, ElasticsearchConfig
+from src.backend.models.document import ProcessingStatus
+from src.backend.core.database import get_db_session
 
 
 @dataclass
@@ -57,6 +59,11 @@ class DocumentPipeline:
             document_id = document.get("id", "")
             self.logger.info(f"Processing document {document_id}")
             
+            db = get_db_session()
+            document.processing_status = ProcessingStatus.CHUNKING
+            db.commit()
+            self.logger.info(f"Document {document_id} status updated to CHUNKING")
+                
             chunks = await self.chunking_service.chunk_document(
                 document=document,
                 strategy=strategy,
@@ -67,28 +74,30 @@ class DocumentPipeline:
             if not chunks:
                 return {"success": False, "error": "Error chunking document"}
             
-            try:
-                embedded_chunks = await self.embedding_service.embed_chunks(chunks)
-                if not embedded_chunks:
-                    return {"success": False, "error": "Failed to generate embeddings"}
-            except Exception as e:
-                return {"success": False, "error": f"Embedding generation failed: {str(e)}"}
+            document.processing_status = ProcessingStatus.INDEXING  
+            db.commit()
+            self.logger.info(f"Document {document_id} status updated to INDEXING")
             
             try:
                 if self.elasticsearch:
-                    vector_success, elasticsearch_success = await asyncio.gather(
-                        self.vector_storage.store_embeddings(embedded_chunks),
-                        self.elasticsearch.index_chunks(chunks),
+                    embedding_storage_task = self._embed_and_store(chunks)
+                    elasticsearch_task = self.elasticsearch.index_chunks(chunks)
+                    
+                    embedding_result, elasticsearch_success = await asyncio.gather(
+                        embedding_storage_task,
+                        elasticsearch_task,
                         return_exceptions=True
                     )
                     
-                    # Handle vector storage result
-                    if isinstance(vector_success, Exception):
-                        return {"success": False, "error": f"Vector storage failed: {str(vector_success)}"}
-                    if not vector_success:
-                        return {"success": False, "error": "Failed to store embeddings in vector database"}
+                    if isinstance(embedding_result, Exception):
+                        document.processing_status = ProcessingStatus.FAILED
+                        db.commit()
+                        return {"success": False, "error": f"Embedding/storage failed: {str(embedding_result)}"}
+                    if not embedding_result:
+                        document.processing_status = ProcessingStatus.FAILED
+                        db.commit()
+                        return {"success": False, "error": "Failed to generate embeddings or store in vector database"}
                     
-                    # Handle elasticsearch result (non-critical)
                     if isinstance(elasticsearch_success, Exception):
                         self.logger.warning(f"Elasticsearch indexing error for document {document_id}: {str(elasticsearch_success)}")
                         elasticsearch_success = False
@@ -96,14 +105,21 @@ class DocumentPipeline:
                         self.logger.warning(f"Elasticsearch indexing failed for document {document_id}, but continuing")
                         
                 else:
-                    # Only vector storage if Elasticsearch is disabled
-                    vector_success = await self.vector_storage.store_embeddings(embedded_chunks)
-                    if not vector_success:
-                        return {"success": False, "error": "Failed to store embeddings in vector database"}
+                    embedding_result = await self._embed_and_store(chunks)
+                    if not embedding_result:
+                        document.processing_status = ProcessingStatus.FAILED
+                        db.commit()
+                        return {"success": False, "error": "Failed to generate embeddings or store in vector database"}
                     elasticsearch_success = True
                     
             except Exception as e:
-                return {"success": False, "error": f"Storage operations failed: {str(e)}"}
+                document.processing_status = ProcessingStatus.FAILED
+                db.commit()
+                return {"success": False, "error": f"Processing operations failed: {str(e)}"}
+    
+            document.processing_status = ProcessingStatus.READY
+            db.commit()
+            self.logger.info(f"Document {document_id} status updated to READY")
 
             stats = self.chunking_service.get_chunk_statistics(chunks)
             return {
@@ -117,6 +133,18 @@ class DocumentPipeline:
         except Exception as e:
             self.logger.error(f"Pipeline error for document {document.get('id', 'unknown')}: {str(e)}")
             return {"success": False, "error": str(e)}
+    
+    async def _embed_and_store(self, chunks: List[Dict[str, Any]]) -> bool:
+        """Helper method to embed chunks and store them in vector database"""
+        try:
+            embedded_chunks = await self.embedding_service.embed_chunks(chunks)
+            if not embedded_chunks:
+                return False
+            
+            return await self.vector_storage.store_embeddings(embedded_chunks)
+        except Exception as e:
+            self.logger.error(f"Embedding/storage error: {str(e)}")
+            return False
     
     async def process_documents(self, 
                               documents: List[Dict[str, Any]],

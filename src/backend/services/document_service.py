@@ -42,9 +42,9 @@ class DocumentService:
                     logger.error(f"Document {document_id} not found in database")
                     return False
                 
-                document.processing_status = ProcessingStatus.PROCESSING
+                document.processing_status = ProcessingStatus.EXTRACTING
                 db.commit()
-                logger.info(f"Document {document_id} status updated to PROCESSING")
+                logger.info(f"Document {document_id} status updated to EXTRACTING")
                 
                 file_content = await self._download_document(document.document_url)
                 if not file_content:
@@ -56,7 +56,10 @@ class DocumentService:
                     self._update_document_error(db, document, f"Text extraction failed: {extraction_result.error}")
                     return False
                 
-                # Process and clean the extracted text
+                document.processing_status = ProcessingStatus.PROCESSING
+                db.commit()
+                logger.info(f"Document {document_id} status updated to PROCESSING")
+                
                 processing_result = process_text(extraction_result.text)
                 if processing_result.error:
                     self._update_document_error(db, document, f"Text processing failed: {processing_result.error}")
@@ -109,8 +112,6 @@ class DocumentService:
     async def _download_document(self, s3_url: str) -> Optional[bytes]:
         """Download document content from S3."""
         try:
-            # Extract S3 key from URL
-            # This is a simplified extraction - you might need to adjust based on your S3 URL format
             if "//" in s3_url:
                 key_part = s3_url.split("//")[1]
                 if "/" in key_part:
@@ -136,17 +137,14 @@ class DocumentService:
         from .document_processing.text_extraction.pdf_extractor import PDFExtractor
         from .document_processing.text_extraction.docx_extractor import DOCXExtractor
         
-        # Create temp file with async I/O
         temp_dir = tempfile.gettempdir()
         temp_filename = f"temp_{filename}_{os.getpid()}"
         temp_path = os.path.join(temp_dir, temp_filename)
         
         try:
-            # Write file asynchronously
             async with aiofiles.open(temp_path, 'wb') as temp_file:
                 await temp_file.write(file_content)
             
-            # Choose extractor based on file extension
             file_path = Path(temp_path)
             ext = Path(filename).suffix.lower()
             
@@ -157,13 +155,11 @@ class DocumentService:
             else:
                 extractor = PlainTextExtractor()
             
-            # Use async extraction if available, otherwise use thread pool
             if hasattr(extractor, 'extract_async'):
                 return await extractor.extract_async(file_path)
             else:
                 return await asyncio.to_thread(extractor.extract, file_path)
         finally:
-            # Clean up temp file asynchronously
             try:
                 await aiofiles.os.remove(temp_path)
             except:
@@ -188,7 +184,6 @@ class DocumentService:
         """Get processing statistics for a document."""
         return await self.pipeline.get_document_stats(document_id)
 
-
 def start_processing_background(document_id: int) -> bool:
     """
     Entry point for TRUE background processing.
@@ -206,16 +201,14 @@ def start_processing_background(document_id: int) -> bool:
             
             service = DocumentService(openai_api_key)
             
-            # Run the async process_document in this thread's event loop
             import asyncio
             asyncio.run(service.process_document(document_id))
             
         except Exception as e:
             logger.error(f"Background processing failed for document {document_id}: {str(e)}")
     
-    # Start processing in background thread
     thread = threading.Thread(target=process_in_background, daemon=True)
     thread.start()
     
     logger.info(f"Started background processing thread for document {document_id}")
-    return True  # Return immediately! 
+    return True
