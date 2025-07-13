@@ -49,7 +49,7 @@ export default function HomeChatArea() {
         formData.append('user_id', user?.id || '');
         formData.append('thread_id', newChatId);
         
-        const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/documents/upload`, formData);
+        const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/documents/upload/`, formData);
         
         if (response.status !== 200) {
           throw new Error(`Upload failed: ${response.statusText}`);

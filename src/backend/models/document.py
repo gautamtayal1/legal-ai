@@ -8,7 +8,7 @@ class ProcessingStatus(PyEnum):
     PENDING = "pending"
     UPLOADED = "uploaded"
     EXTRACTING = "extracting"
-    PROCESSING = "processing"  
+    PROCESSING = "processing"
     CHUNKING = "chunking"
     INDEXING = "indexing"
     READY = "ready"
@@ -25,7 +25,7 @@ class Document(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     thread_id = Column(String, ForeignKey("threads.id"), nullable=False)
-    processing_status = Column(Enum(ProcessingStatus), default=ProcessingStatus.PENDING)
+    processing_status = Column(Enum(ProcessingStatus, values_callable=lambda obj: [e.value for e in obj]), default=ProcessingStatus.PENDING)
     error_message = Column(Text, nullable=True)
     
     user = relationship("User")

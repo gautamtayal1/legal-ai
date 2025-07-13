@@ -6,7 +6,7 @@ from utils.s3_service import upload_file
 from services.document_service import start_processing_background
 import os
 from dotenv import load_dotenv
-
+import logging
 load_dotenv()
 
 router = APIRouter(
@@ -128,5 +128,5 @@ async def get_document_status(doc_id: int, db: Session = Depends(get_db)):
         "id": document.id,
         "processing_status": document.processing_status,
         "error_message": document.error_message,
-        "is_ready": document.processing_status == "ready"
+        "is_ready": document.processing_status == ProcessingStatus.READY
     }
