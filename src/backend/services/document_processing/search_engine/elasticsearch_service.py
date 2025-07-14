@@ -76,7 +76,6 @@ class ElasticsearchService:
     
     async def index_chunks(self, chunks: List[DocumentChunk]) -> bool:
         """Index chunks asynchronously"""
-        # Ensure index exists before indexing
         await self._create_index()
             
         try:

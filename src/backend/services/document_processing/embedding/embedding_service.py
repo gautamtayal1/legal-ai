@@ -2,8 +2,7 @@ import asyncio
 import logging
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
-import openai
-from openai import AsyncOpenAI
+from langchain_openai import OpenAIEmbeddings
 
 from ..chunking.base import DocumentChunk
 
@@ -19,50 +18,45 @@ class EmbeddingConfig:
 
 class EmbeddingService:
     def __init__(self, api_key: str, config: Optional[EmbeddingConfig] = None):
-        self.client = AsyncOpenAI(api_key=api_key)
         self.config = config or EmbeddingConfig()
         self.logger = logging.getLogger(__name__)
+        
+        # Initialize LangChain OpenAI embeddings
+        self.embeddings = OpenAIEmbeddings(
+            openai_api_key=api_key,
+            model=self.config.model,
+            dimensions=self.config.dimensions,
+            chunk_size=self.config.batch_size,
+            max_retries=self.config.max_retries
+        )
     
     async def embed_text(self, text: str) -> List[float]:
+        """Embed a single text using LangChain OpenAI embeddings"""
         try:
-            response = await self.client.embeddings.create(
-                model=self.config.model,
-                input=text,
-                dimensions=self.config.dimensions
-            )
-            return response.data[0].embedding
+            # LangChain embeddings are sync, but we can make them async-compatible
+            loop = asyncio.get_event_loop()
+            embedding = await loop.run_in_executor(None, self.embeddings.embed_query, text)
+            return embedding
         except Exception as e:
             self.logger.error(f"Failed to embed text: {str(e)}")
             raise
     
     async def embed_texts(self, texts: List[str]) -> List[List[float]]:
+        """Embed multiple texts using LangChain OpenAI embeddings"""
         if not texts:
             return []
         
-        embeddings = []
-        for i in range(0, len(texts), self.config.batch_size):
-            batch = texts[i:i + self.config.batch_size]
-            batch_embeddings = await self._embed_batch(batch)
-            embeddings.extend(batch_embeddings)
-        
-        return embeddings
-    
-    async def _embed_batch(self, texts: List[str]) -> List[List[float]]:
-        for attempt in range(self.config.max_retries):
-            try:
-                response = await self.client.embeddings.create(
-                    model=self.config.model,
-                    input=texts,
-                    dimensions=self.config.dimensions
-                )
-                return [item.embedding for item in response.data]
-            except Exception as e:
-                if attempt == self.config.max_retries - 1:
-                    self.logger.error(f"Failed to embed batch after {self.config.max_retries} attempts: {str(e)}")
-                    raise
-                await asyncio.sleep(self.config.retry_delay * (2 ** attempt))
+        try:
+            # Use LangChain's built-in batching
+            loop = asyncio.get_event_loop()
+            embeddings = await loop.run_in_executor(None, self.embeddings.embed_documents, texts)
+            return embeddings
+        except Exception as e:
+            self.logger.error(f"Failed to embed texts: {str(e)}")
+            raise
     
     async def embed_chunks(self, chunks: List[DocumentChunk]) -> List[Dict[str, Any]]:
+        """Embed document chunks and return structured data"""
         texts = [chunk.content for chunk in chunks]
         embeddings = await self.embed_texts(texts)
         
@@ -83,12 +77,15 @@ class EmbeddingService:
         return embedded_chunks
     
     async def embed_query(self, query: str) -> List[float]:
+        """Embed a query text"""
         return await self.embed_text(query)
     
     def get_embedding_dimension(self) -> int:
+        """Get the embedding dimension for the model"""
         if self.config.dimensions:
             return self.config.dimensions
         
+        # Default dimensions for OpenAI models
         model_dimensions = {
             "text-embedding-3-small": 1536,
             "text-embedding-3-large": 3072,

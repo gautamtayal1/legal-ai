@@ -32,25 +32,29 @@ class DocumentPipeline:
         self.config = config or PipelineConfig()
         self.logger = logging.getLogger(__name__)
         
-        self.chunking_service = DocumentChunkingService(
-            chunk_config=self.config.chunk_config
-        )
-        
+        # Initialize embedding service
         self.embedding_service = EmbeddingService(
             api_key=openai_api_key,
             config=self.config.embedding_config
         )
         
+        # Initialize vector storage with the same embedding function
         self.vector_storage = VectorStorageService(
-            config=self.config.storage_config
+            config=self.config.storage_config,
+            embedding_function=self.embedding_service.embeddings  # Pass the LangChain embeddings
         )
         
+        # Initialize chunking service
+        self.chunking_service = DocumentChunkingService(
+            chunk_config=self.config.chunk_config
+        )
+        
+        # Initialize Elasticsearch if enabled
+        self.elasticsearch = None
         if self.config.enable_elasticsearch:
             self.elasticsearch = ElasticsearchService(
                 config=self.config.elasticsearch_config
             )
-        else:
-            self.elasticsearch = None
     
     async def process_document(self, 
         document: Dict[str, Any],
@@ -139,12 +143,24 @@ class DocumentPipeline:
             db.close()
     
     async def _embed_and_store(self, chunks: List[Dict[str, Any]]) -> bool:
-        """Helper method to embed chunks and store them in vector database"""
+        """Helper method to embed chunks and store them in vector database using LangChain"""
         try:
-            embedded_chunks = await self.embedding_service.embed_chunks(chunks)
+            # Convert DocumentChunk objects from chunking service
+            document_chunks = []
+            for chunk_dict in chunks:
+                if isinstance(chunk_dict, dict) and 'chunk' in chunk_dict:
+                    # Already in the expected format from LangChain services
+                    document_chunks.append(chunk_dict['chunk'])
+                else:
+                    # Assume it's a DocumentChunk object
+                    document_chunks.append(chunk_dict)
+            
+            # Embed using LangChain-based embedding service
+            embedded_chunks = await self.embedding_service.embed_chunks(document_chunks)
             if not embedded_chunks:
                 return False
             
+            # Store using LangChain-based vector storage service
             return await self.vector_storage.store_embeddings(embedded_chunks)
         except Exception as e:
             self.logger.error(f"Embedding/storage error: {str(e)}")
