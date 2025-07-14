@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Form, Query
 from sqlalchemy.orm import Session
 from core.database import get_db
 from models.document import Document, ProcessingStatus
+from models.thread import Thread
 from utils.s3_service import upload_file
 from services.document_service import start_processing_background
 import os
@@ -19,9 +20,9 @@ AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 @router.get("/")
-async def list_documents(db: Session = Depends(get_db)):
-    """Get all documents from the database."""
-    documents = db.query(Document).all()
+async def list_documents(user_id: str = Query(..., description="User ID to filter documents"), db: Session = Depends(get_db)):
+    """Get all documents for a specific user."""
+    documents = db.query(Document).filter(Document.user_id == user_id).all()
     return [
         {
             "id": doc.id,
@@ -118,11 +119,15 @@ async def get_document(doc_id: str):
     raise HTTPException(status_code=404, detail="Document not found")
 
 @router.get("/{doc_id}/status")
-async def get_document_status(doc_id: int, db: Session = Depends(get_db)):
+async def get_document_status(
+    doc_id: int, 
+    user_id: str = Query(..., description="User ID for authorization"),
+    db: Session = Depends(get_db)
+):
     """Get document processing status for live updates"""
-    document = db.query(Document).filter(Document.id == doc_id).first()
+    document = db.query(Document).filter(Document.id == doc_id, Document.user_id == user_id).first()
     if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="Document not found or access denied")
     
     return {
         "id": document.id,
@@ -132,8 +137,18 @@ async def get_document_status(doc_id: int, db: Session = Depends(get_db)):
     }
 
 @router.get("/thread/{thread_id}")
-async def get_documents_by_thread(thread_id: str, db: Session = Depends(get_db)):
-    """Get all documents for a specific thread with their processing status"""
+async def get_documents_by_thread(
+    thread_id: str, 
+    user_id: str = Query(..., description="User ID for authorization"),
+    db: Session = Depends(get_db)
+):
+    """Get all documents for a specific thread owned by the user"""
+    # First verify the user owns this thread
+    thread = db.query(Thread).filter(Thread.id == thread_id, Thread.user_id == user_id).first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found or access denied")
+    
+    # Now get documents for this thread
     documents = db.query(Document).filter(Document.thread_id == thread_id).all()
     
     return [

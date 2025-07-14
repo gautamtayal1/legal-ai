@@ -15,22 +15,18 @@ interface Message {
 export default function MainChatArea() {
   const [messages, setMessages] = useState<Message[]>([]);
 
-  // TODO: Fetch messages for this thread when messages API is implemented
   const hasMessages = messages.length > 0;
 
-  // If there are messages, show the chat interface
   if (hasMessages) {
     return (
       <div className="w-full h-screen bg-chat-area relative">
         <div className="flex-1 overflow-y-auto">
-          {/* Message list will go here */}
         </div>
         <InputBox />
       </div>
     );
   }
 
-  // Show simple ready state when no messages
   return (
     <div className="w-full h-screen bg-chat-area relative">
       <div className="flex flex-col items-center justify-center h-full">
@@ -45,8 +41,7 @@ export default function MainChatArea() {
             Ask me anything about your documents
           </p>
         </div>
-      </div>
-      
+      </div>      
       <InputBox />
     </div>
   );

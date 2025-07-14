@@ -41,16 +41,16 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     setIsOpen(!isOpen);
   };
 
-  // Fetch threads once and cache them
   useEffect(() => {
     const fetchThreads = async () => {
       if (!user?.id) return;
       
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/threads`);
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/threads/${user.id}`);
         setThreads(response.data);
       } catch (error) {
         console.error('Failed to fetch threads:', error);
+        setThreads([]);
       }
     };
 

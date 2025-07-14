@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
 import axios from 'axios';
 import Sidebar, { MainContent } from "@/components/Sidebar";
 import MainChatArea from "@/app/components/ChatPage/MainChatArea";
@@ -27,6 +28,7 @@ interface CombinedStatus {
 export default function ChatPage() {
   const params = useParams();
   const threadId = params.id as string;
+  const { user } = useUser();
   
   const [documents, setDocuments] = useState<DocumentStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -146,32 +148,59 @@ export default function ChatPage() {
 
   useEffect(() => {
     let isMounted = true;
+    let pollInterval: NodeJS.Timeout | null = null;
+    
+    // Clear documents if no user
+    if (!user?.id) {
+      setDocuments([]);
+      setError(null);
+      return;
+    }
     
     const fetchDocuments = async () => {
       try {
         const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/documents/thread/${threadId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/documents/thread/${threadId}?user_id=${user.id}`
         );
         
         if (isMounted) {
-          setDocuments(response.data);
+          const newDocuments = response.data;
+          setDocuments(newDocuments);
           setError(null);
+          
+          // Check if all documents are ready
+          const allReady = newDocuments.length > 0 && newDocuments.every((doc: DocumentStatus) => doc.is_ready);
+          
+          // Clear interval if all documents are ready
+          if (allReady && pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+            console.log('All documents are ready, stopped polling');
+          }
         }
       } catch (err) {
         if (isMounted) {
           setError('Failed to fetch documents for this thread');
+          setDocuments([]); // Clear on error
+          // Clear polling on error
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+          }
         }
       }
     };
 
     fetchDocuments();
-    const pollInterval = setInterval(fetchDocuments, 500);
+    pollInterval = setInterval(fetchDocuments, 500);
 
     return () => {
       isMounted = false;
-      clearInterval(pollInterval);
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
     };
-  }, [threadId]);
+  }, [threadId, user?.id]);
 
   // Show error state
   if (error) {

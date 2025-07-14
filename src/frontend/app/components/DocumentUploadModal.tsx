@@ -46,14 +46,12 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
     const newFiles: UploadedFile[] = [];
     
     Array.from(files).forEach((file) => {
-      // Check file type
       const allowedTypes = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
       if (!allowedTypes.includes(file.type)) {
         alert(`File type ${file.type} not supported`);
         return;
       }
       
-      // Check file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
         alert(`File ${file.name} exceeds 10MB limit`);
         return;
@@ -78,7 +76,6 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
     if (files) {
       addFiles(files);
     }
-    // Reset input
     event.target.value = '';
   };
 
@@ -110,7 +107,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
     if (uploadedFiles.length === 0) {
       alert('Please upload at least one document');
       return;
-      
+        
     }
     setIsSubmitting(true);
     try {
@@ -127,7 +124,6 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-chat-area rounded-2xl border border-white/10 w-full max-w-2xl max-h-[90vh] flex flex-col">
-        {/* Header */}
         <div className="p-6 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
@@ -145,9 +141,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
           </div>
         </div>
 
-        {/* Content - Scrollable */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Upload Area */}
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -187,7 +181,6 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
             </p>
           </div>
 
-          {/* Uploaded Files */}
           {uploadedFiles.length > 0 && (
             <div className="mt-6">
               <h3 className="text-white font-medium mb-3">
@@ -221,7 +214,6 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
           )}
         </div>
 
-        {/* Footer - Always Visible */}
         <div className="p-6 border-t border-white/10 bg-chat-area/50 flex-shrink-0">
           <div className="flex items-center justify-between">
             <p className="text-white/60 text-sm">
