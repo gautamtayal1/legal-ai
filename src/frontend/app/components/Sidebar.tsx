@@ -110,8 +110,6 @@ export default function Sidebar() {
       >
         <Menu size={18} />
       </button>
-
-      {/* New Chat Button - Emerges from sidebar button */}
       <button
         onClick={handleNewChat}
         className={`fixed top-4 z-50 w-10 h-10 bg-sidebar border border-white/10 border-l-0 rounded-r-lg flex items-center justify-center text-white hover:bg-white/10 transition-all duration-300 ease-out ${
@@ -135,15 +133,15 @@ export default function Sidebar() {
         style={{ width: '20%' }}
       >
         {/* Logo - positioned to align with toggle button */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white font-bold">
-          <Image src="/logo.jpg" alt="Logo" width={40} height={40} />
+        <div className="absolute top-3.5 left-1/2 transform -translate-x-1/2 text-white font-bold">
+          <Image src="/logo.jpg" alt="Logo" width={50} height={50} />
         </div>
 
         {/* New Chat Button */}
-        <div className="p-3 pt-16">
+        <div className="p-3 my-5 pt-16">
           <button 
             onClick={handleNewChat}
-            className="w-full p-2.5 text-white rounded-4xl hover:bg-white/10 transition-colors gap-2 font-medium flex justify-center items-center"
+            className="w-full p-2.5 text-white rounded-4xl hover:bg-white/10 transition-colors gap-2 font-medium flex items-center"
           >
             <Plus size={18} />
             New Chat
@@ -156,11 +154,7 @@ export default function Sidebar() {
             Recent Chats
           </div>
           
-          {loading ? (
-            <div className="text-white/40 text-sm px-2">Loading chats...</div>
-          ) : threads.length === 0 ? (
-            <div className="text-white/40 text-sm px-2">No chats yet</div>
-          ) : (
+          
             <div className="space-y-1">
               {threads.map((thread) => (
                 <button
@@ -184,7 +178,6 @@ export default function Sidebar() {
                 </button>
               ))}
             </div>
-          )}
         </div>
 
         {/* User Section */}

@@ -29,7 +29,6 @@ export default function ChatPage() {
   const threadId = params.id as string;
   
   const [documents, setDocuments] = useState<DocumentStatus[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Status mapping from DB to UI
@@ -156,13 +155,11 @@ export default function ChatPage() {
         
         if (isMounted) {
           setDocuments(response.data);
-          setLoading(false);
           setError(null);
         }
       } catch (err) {
         if (isMounted) {
           setError('Failed to fetch documents for this thread');
-          setLoading(false);
         }
       }
     };
@@ -175,20 +172,6 @@ export default function ChatPage() {
       clearInterval(pollInterval);
     };
   }, [threadId]);
-
-  // Show loading state
-  if (loading) {
-    return (
-      <>
-        <Sidebar />
-        <MainContent>
-          <div className="w-full h-screen bg-chat-area flex items-center justify-center">
-            <div className="text-white">Loading documents...</div>
-          </div>
-        </MainContent>
-      </>
-    );
-  }
 
   // Show error state
   if (error) {
@@ -203,22 +186,7 @@ export default function ChatPage() {
       </>
     );
   }
-
-  // Show no documents state
-  if (documents.length === 0) {
-    return (
-      <>
-        <Sidebar />
-        <MainContent>
-          <div className="w-full h-screen bg-chat-area flex items-center justify-center">
-            <div className="text-white/60">No documents found in this thread</div>
-          </div>
-        </MainContent>
-      </>
-    );
-  }
-
-  // Get combined status based on slowest document
+  
   const combinedStatus = getCombinedStatus(documents);
 
   // Show failed state
@@ -242,8 +210,8 @@ export default function ChatPage() {
     );
   }
 
-  // Show chat interface if all documents are ready
-  if (combinedStatus?.is_ready) {
+  // Show chat interface if all documents are ready OR if no combinedStatus
+  if (combinedStatus?.is_ready || !combinedStatus) {
     return (
       <>
         <Sidebar />
@@ -260,7 +228,7 @@ export default function ChatPage() {
       <Sidebar />
       <MainContent>
         <DocumentProcessing 
-          documentId={combinedStatus?.id || 0}
+          documentId={combinedStatus.id}
           status={combinedStatus}
           onComplete={() => {
             // The polling will automatically detect when all documents are ready
