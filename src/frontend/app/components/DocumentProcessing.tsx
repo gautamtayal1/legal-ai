@@ -1,122 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { FileText, Check, Loader2, Zap, Database, Brain } from 'lucide-react';
-import axios from 'axios';
 
 interface DocumentProcessingProps {
   documentId: number;
+  status: ProcessingStatus | null;
   onComplete?: () => void;
 }
 
 interface ProcessingStatus {
   id: number;
-  filename: string;
+  filename?: string;
   processing_status: string;
-  processing_step: string | null;
-  processing_progress: number;
-  error_message: string | null;
+  processing_step?: string | null;
+  processing_progress?: number;
+  error_message?: string | null;
   is_ready: boolean;
 }
 
-const DocumentProcessing = ({ documentId, onComplete }: DocumentProcessingProps) => {
-  const [status, setStatus] = useState<ProcessingStatus | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    const timeouts: NodeJS.Timeout[] = [];
-
-    const fakeStatuses: ProcessingStatus[] = [
-      {
-        id: documentId,
-        filename: "example.pdf",
-        processing_status: "processing",
-        processing_step: "Initializing document processing...",
-        processing_progress: 10,
-        error_message: null,
-        is_ready: false,
-      },
-      {
-        id: documentId,
-        filename: "example.pdf",
-        processing_status: "extracting",
-        processing_step: "Extracting text from document...",
-        processing_progress: 30,
-        error_message: null,
-        is_ready: false,
-      },
-      {
-        id: documentId,
-        filename: "example.pdf",
-        processing_status: "chunking",
-        processing_step: "Breaking document into meaningful sections...",
-        processing_progress: 60,
-        error_message: null,
-        is_ready: false,
-      },
-      {
-        id: documentId,
-        filename: "example.pdf",
-        processing_status: "embedding",
-        processing_step: "Generating embeddings for search...",
-        processing_progress: 85,
-        error_message: null,
-        is_ready: false,
-      },
-      {
-        id: documentId,
-        filename: "example.pdf",
-        processing_status: "ready",
-        processing_step: "Document ready for chat!",
-        processing_progress: 100,
-        error_message: null,
-        is_ready: true,
-      },
-    ];
-
-    fakeStatuses.forEach((fakeStatus, idx) => {
-      const timeout = setTimeout(() => {
-        if (isMounted) {
-          setStatus(fakeStatus);
-          // Call onComplete when ready
-          if (fakeStatus.is_ready && onComplete) {
-            onComplete();
-          }
-        }
-      }, idx * 1500);
-      timeouts.push(timeout);
-    });
-
-    return () => {
-      isMounted = false;
-      timeouts.forEach(clearTimeout);
-    };
-  }, [documentId, onComplete]);
-
-  const getStepStatus = (stepName: string, currentStatus: string, currentStep: string | null) => {
-    const steps = ['pending', 'processing', 'extracting', 'chunking', 'embedding', 'ready'];
-    const currentIndex = steps.indexOf(currentStatus);
-    const stepIndex = steps.indexOf(stepName);
-    
-    if (currentStatus === 'failed') return 'error';
-    if (stepIndex < currentIndex) return 'completed';
-    if (stepIndex === currentIndex || (stepName === 'processing' && currentStep)) return 'in-progress';
-    return 'pending';
-  };
-
-  useEffect(() => {
-    const fetchStatus = async () => {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/documents/${documentId}/status`);
-      setStatus(response.data);
-    };
-    fetchStatus();
-  }, [documentId]);
-
+const DocumentProcessing = ({ documentId, status, onComplete }: DocumentProcessingProps) => {
   const steps = [
-    { key: 'processing', icon: FileText, label: "Upload" },
-    { key: 'extracting', icon: Zap, label: "Extract" },
+    { key: 'uploading', icon: FileText, label: "Upload" },
+    { key: 'processing', icon: Zap, label: "Extract" },
     { key: 'chunking', icon: Database, label: "Chunk" },
-    { key: 'embedding', icon: Brain, label: "Embed" },
+    { key: 'indexing', icon: Brain, label: "Embed" },
     { key: 'ready', icon: Check, label: "Ready" }
   ];
 
@@ -137,52 +45,52 @@ const DocumentProcessing = ({ documentId, onComplete }: DocumentProcessingProps)
           
           {/* Header */}
           <div className="text-center mb-12">
-            <h2 className="text-white text-2xl font-light mb-3">Processing Document</h2>
-            <p className="text-white/60">{status.filename}</p>
+            <h2 className="text-white text-2xl font-light mb-3">Processing Documents</h2>
+            <p className="text-white/60">{status.filename || `Document ${documentId}`}</p>
           </div>
           
           {/* Vertical Timeline */}
-          <div className="space-y-0 mb-12">
+          <div className="relative">
             {steps.map((step, index) => {
-              const Icon = step.icon;
-              const stepStatus = getStepStatus(step.key, status.processing_status, status.processing_step);
-              const isActive = stepStatus === "in-progress";
-              const isCompleted = stepStatus === "completed";
+              // Check if this step is completed (current status is at this step or beyond)
+              const currentStepIndex = steps.findIndex(s => s.key === status.processing_status);
+              const isCompleted = currentStepIndex > index || (currentStepIndex === index && status.processing_status === 'ready');
+              const isActive = step.key === status.processing_status;
+              const isLastStep = index === steps.length - 1;
               
               return (
-                <div key={index} className="flex items-start space-x-4 relative h-24">
-                  {/* Timeline dot and connecting line */}
-                  <div className="flex flex-col items-center relative z-10">
+                <div key={step.key} className="relative flex items-start mb-8 last:mb-0">
+                  
+                  {/* Connector Line */}
+                  {!isLastStep && (
                     <div 
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                        isCompleted 
-                          ? "bg-button border-button" 
-                          : isActive 
-                            ? "bg-button/20 border-button" 
-                            : "bg-input-area border-white/20"
+                      className={`absolute left-6 top-12 w-0.5 h-8 transition-colors duration-500 ${
+                        isCompleted
+                          ? "bg-button" 
+                          : "bg-white/20"
                       }`}
-                    >
-                      {isActive ? (
-                        <Loader2 className="w-5 h-5 text-button animate-spin" />
-                      ) : isCompleted ? (
-                        <Check className="w-5 h-5 text-white" />
-                      ) : (
-                        <Icon className="w-5 h-5 text-white/40" />
-                      )}
-                    </div>
-                    
-                    {/* Connecting line to next step */}
-                    {index < steps.length - 1 && (
-                      <div 
-                        className={`w-0.5 h-14 transition-colors duration-300 ${
-                          isCompleted ? "bg-button" : "bg-white/10"
-                        }`}
-                      />
+                    />
+                  )}
+                  
+                  {/* Icon Circle */}
+                  <div 
+                    className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-500 ${
+                      isCompleted 
+                        ? "bg-button border-button text-black" 
+                        : isActive 
+                          ? "bg-chat-area border-button text-button animate-pulse" 
+                          : "bg-chat-area border-white/20 text-white/40"
+                    }`}
+                  >
+                    {isActive && !isCompleted ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <step.icon className="w-5 h-5" />
                     )}
                   </div>
                   
                   {/* Content */}
-                  <div className="flex-1 h-full flex flex-col justify-start pt-2">
+                  <div className="flex-1 h-full flex flex-col justify-start pt-2 ml-6">
                     <div className="flex items-center justify-between mb-1">
                       <h3 
                         className={`font-medium transition-colors duration-300 ${
@@ -211,7 +119,7 @@ const DocumentProcessing = ({ documentId, onComplete }: DocumentProcessingProps)
                         </p>
                       )}
                       
-                      {isCompleted && (
+                      {isCompleted && !isActive && (
                         <p className="text-white/50 text-sm">Complete</p>
                       )}
                     </div>

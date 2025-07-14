@@ -130,3 +130,25 @@ async def get_document_status(doc_id: int, db: Session = Depends(get_db)):
         "error_message": document.error_message,
         "is_ready": document.processing_status == ProcessingStatus.READY
     }
+
+@router.get("/thread/{thread_id}")
+async def get_documents_by_thread(thread_id: str, db: Session = Depends(get_db)):
+    """Get all documents for a specific thread with their processing status"""
+    documents = db.query(Document).filter(Document.thread_id == thread_id).all()
+    
+    return [
+        {
+            "id": doc.id,
+            "filename": doc.filename,
+            "file_type": doc.file_type,
+            "file_size": doc.file_size,
+            "document_url": doc.document_url,
+            "thread_id": doc.thread_id,
+            "user_id": doc.user_id,
+            "uploaded_at": doc.uploaded_at,
+            "processing_status": doc.processing_status,
+            "error_message": doc.error_message,
+            "is_ready": doc.processing_status == ProcessingStatus.READY
+        }
+        for doc in documents
+    ]
