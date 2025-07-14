@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from api.routers import documents
 from api.routers import clerk_webhooks  
 from api.routers import threads
+from api.routers import query
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ app.add_middleware(
 app.include_router(documents.router, prefix="/api")
 app.include_router(clerk_webhooks.router, prefix="/api")
 app.include_router(threads.router, prefix="/api")
+app.include_router(query.router, prefix="/api")
 
 @app.get("/")
 async def root():
@@ -87,7 +89,8 @@ async def root():
             "docs": "/docs",
             "documents": "/api/documents",
             "clerk_webhook": "/webhooks",
-            "threads": "/api/threads"
+            "threads": "/api/threads",
+            "query": "/api/query"
         }
     }
 

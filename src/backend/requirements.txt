@@ -124,3 +124,7 @@ elasticsearch[async]>=8.0.0
 # Async file operations
 aiofiles>=24.1.0
 
+# LangChain integration packages
+langchain-openai>=0.0.5
+langchain-chroma>=0.1.0
+
