@@ -1,6 +1,5 @@
 """
 Main retrieval service that orchestrates query processing, hybrid search, and answer generation.
-Implements complete retrieval pipeline (Steps 12-14) from architecture.
 """
 
 import logging

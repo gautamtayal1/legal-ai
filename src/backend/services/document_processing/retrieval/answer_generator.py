@@ -165,7 +165,7 @@ Cite every statement using [cite_N] format. If no definition is found, clearly s
                 })
             else:
                 # Use general legal chain
-                answer = await self.legal_chain.ainvoke({
+                answer = await self.legal_chain.invoke({
                     "query": query,
                     "context": context,
                     "intent": processed_query.intent.value,
