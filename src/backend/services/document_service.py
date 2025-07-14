@@ -65,7 +65,7 @@ class DocumentService:
                     return False
                 
                 pipeline_doc = {
-                    "id": str(document.id),
+                    "id": document.id,
                     "title": document.filename,
                     "content": processing_result.text,
                     "metadata": {
@@ -75,7 +75,7 @@ class DocumentService:
                         "thread_id": document.thread_id,
                         "user_id": document.user_id,
                         "extraction_metadata": extraction_result.metadata,
-                        "processing_metadata": processing_result.metadata
+                        "processing_status": ProcessingStatus.PROCESSING.value
                     }
                 }
                 
@@ -148,7 +148,7 @@ class DocumentService:
             ext = Path(filename).suffix.lower()
             if ext:
                 new_temp_path = temp_path + ext
-                await aiofiles.os.rename(temp_path, new_temp_path)
+                os.rename(temp_path, new_temp_path)
                 temp_path = new_temp_path
                 file_path = Path(temp_path)
             
@@ -159,7 +159,7 @@ class DocumentService:
             
         finally:
             try:
-                await aiofiles.os.remove(temp_path)
+                os.remove(temp_path)
             except:
                 pass
     

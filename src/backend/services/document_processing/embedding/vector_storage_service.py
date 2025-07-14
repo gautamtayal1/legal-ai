@@ -12,7 +12,7 @@ from ..chunking.base import DocumentChunk
 @dataclass
 class VectorStorageConfig:
     host: str = os.getenv("CHROMADB_HOST", "localhost")
-    port: int = int(os.getenv("CHROMADB_PORT", "8000"))
+    port: int = int(os.getenv("CHROMADB_PORT", "8080"))
     collection_name: str = "legal_documents"
     distance_metric: str = "cosine"
     max_results: int = 50
@@ -111,6 +111,9 @@ class VectorStorageService:
                         "has_legal_context": True,
                         "legal_context": str(chunk.legal_context)
                     })
+                
+                # Ensure all metadata values are JSON serializable
+                chunk_metadata = self._ensure_json_serializable(chunk_metadata)
                 
                 metadatas.append(chunk_metadata)
             
@@ -275,3 +278,28 @@ class VectorStorageService:
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
+
+    def _ensure_json_serializable(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Ensure all metadata values are JSON serializable"""
+        serializable_metadata = {}
+        for key, value in metadata.items():
+            try:
+                # Convert enum values to strings
+                if hasattr(value, 'value'):  # Enum objects
+                    serializable_metadata[key] = value.value
+                elif isinstance(value, (str, int, float, bool, type(None))):
+                    serializable_metadata[key] = value
+                elif isinstance(value, (list, tuple)):
+                    serializable_metadata[key] = [
+                        item.value if hasattr(item, 'value') else str(item) 
+                        for item in value
+                    ]
+                elif isinstance(value, dict):
+                    serializable_metadata[key] = self._ensure_json_serializable(value)
+                else:
+                    # Convert other objects to string
+                    serializable_metadata[key] = str(value)
+            except Exception:
+                # If all else fails, convert to string
+                serializable_metadata[key] = str(value)
+        return serializable_metadata

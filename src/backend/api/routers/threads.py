@@ -18,7 +18,7 @@ class ThreadCreate(BaseModel):
     user_id: str
     title: str
 
-@router.get("/")
+@router.get("")
 async def list_threads(db: Session = Depends(get_db)):
     """Get all threads from the database."""
     threads = db.query(Thread).all()
@@ -32,7 +32,7 @@ async def list_threads(db: Session = Depends(get_db)):
         for thread in threads
     ]
 
-@router.post("/")
+@router.post("")
 async def create_thread(thread_data: ThreadCreate, db: Session = Depends(get_db)):
     """Create a new thread."""
     thread = Thread(

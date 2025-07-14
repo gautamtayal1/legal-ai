@@ -19,16 +19,26 @@ async def lifespan(app: FastAPI):
     """Manage application lifecycle - startup and shutdown"""
     logger.info("🚀 Starting Legal AI - Inquire API")
     
-    # Initialize services
     try:
         from services.document_processing.embedding.vector_storage_service import VectorStorageService
         from services.document_processing.search_engine.elasticsearch_service import ElasticsearchService
         
-        # Initialize global services
-        _services["vector_storage"] = VectorStorageService()
-        _services["elasticsearch"] = ElasticsearchService()
+        # Initialize services with error handling
+        try:
+            _services["vector_storage"] = VectorStorageService()
+            logger.info("✅ VectorStorageService initialized")
+        except Exception as e:
+            logger.warning(f"⚠️ VectorStorageService not available: {e}")
+            _services["vector_storage"] = None
+            
+        try:
+            _services["elasticsearch"] = ElasticsearchService()
+            logger.info("✅ ElasticsearchService initialized")
+        except Exception as e:
+            logger.warning(f"⚠️ ElasticsearchService not available: {e}")
+            _services["elasticsearch"] = None
         
-        logger.info("✅ Services initialized successfully")
+        logger.info("✅ Application startup completed")
         
         yield  # Application runs here
         
@@ -37,10 +47,10 @@ async def lifespan(app: FastAPI):
         logger.info("🔄 Shutting down services...")
         
         try:
-            if "vector_storage" in _services:
+            if "vector_storage" in _services and _services["vector_storage"]:
                 await _services["vector_storage"].close()
                 
-            if "elasticsearch" in _services:
+            if "elasticsearch" in _services and _services["elasticsearch"]:
                 await _services["elasticsearch"].client.close()
                 
             logger.info("✅ Services shut down successfully")
@@ -90,18 +100,18 @@ async def health_check():
     health_checks = {}
     
     try:
-        if "vector_storage" in _services:
+        if "vector_storage" in _services and _services["vector_storage"]:
             # Simple connectivity check
             health_checks["chromadb"] = "connected"
         else:
-            health_checks["chromadb"] = "not_initialized"
+            health_checks["chromadb"] = "not_available"
             
-        if "elasticsearch" in _services:
+        if "elasticsearch" in _services and _services["elasticsearch"]:
             # Check if elasticsearch is healthy
             es_health = await _services["elasticsearch"].health_check()
             health_checks["elasticsearch"] = "healthy" if es_health else "unhealthy"
         else:
-            health_checks["elasticsearch"] = "not_initialized"
+            health_checks["elasticsearch"] = "not_available"
             
     except Exception as e:
         logger.error(f"Health check error: {e}")
@@ -118,4 +128,4 @@ async def global_exception_handler(request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8000)

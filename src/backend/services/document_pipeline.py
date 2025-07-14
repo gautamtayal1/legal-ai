@@ -8,7 +8,7 @@ from services.document_processing.chunking.base import ChunkingStrategy, ChunkCo
 from services.document_processing.embedding.embedding_service import EmbeddingService, EmbeddingConfig
 from services.document_processing.embedding.vector_storage_service import VectorStorageService, VectorStorageConfig
 from services.document_processing.search_engine.elasticsearch_service import ElasticsearchService, ElasticsearchConfig
-from models.document import ProcessingStatus
+from models.document import Document, ProcessingStatus
 from core.database import get_db
 
 
@@ -57,12 +57,13 @@ class DocumentPipeline:
         strategy: Optional[ChunkingStrategy] = None) -> Dict[str, Any]:
         try:
             document_id = document.get("id", "")
-            self.logger.info(f"Processing document {document_id}")
+            self.logger.info(f"Processing document {document_id} line 60")
             
             db = next(get_db())
-            document.processing_status = ProcessingStatus.CHUNKING
+            doc_model = db.query(Document).filter(Document.id == document_id).first()
+            doc_model.processing_status = ProcessingStatus.CHUNKING
             db.commit()
-            self.logger.info(f"Document {document_id} status updated to CHUNKING")
+            self.logger.info(f"Document {document_id} status updated to CHUNKING line 65")
                 
             chunks = await self.chunking_service.chunk_document(
                 document=document,
@@ -74,7 +75,7 @@ class DocumentPipeline:
             if not chunks:
                 return {"success": False, "error": "Error chunking document"}
             
-            document.processing_status = ProcessingStatus.INDEXING  
+            doc_model.processing_status = ProcessingStatus.INDEXING  
             db.commit()
             self.logger.info(f"Document {document_id} status updated to INDEXING")
             
@@ -90,11 +91,11 @@ class DocumentPipeline:
                     )
                     
                     if isinstance(embedding_result, Exception):
-                        document.processing_status = ProcessingStatus.FAILED
+                        doc_model.processing_status = ProcessingStatus.FAILED
                         db.commit()
                         return {"success": False, "error": f"Embedding/storage failed: {str(embedding_result)}"}
                     if not embedding_result:
-                        document.processing_status = ProcessingStatus.FAILED
+                        doc_model.processing_status = ProcessingStatus.FAILED
                         db.commit()
                         return {"success": False, "error": "Failed to generate embeddings or store in vector database"}
                     
@@ -107,17 +108,17 @@ class DocumentPipeline:
                 else:
                     embedding_result = await self._embed_and_store(chunks)
                     if not embedding_result:
-                        document.processing_status = ProcessingStatus.FAILED
+                        doc_model.processing_status = ProcessingStatus.FAILED
                         db.commit()
                         return {"success": False, "error": "Failed to generate embeddings or store in vector database"}
                     elasticsearch_success = True
                     
             except Exception as e:
-                document.processing_status = ProcessingStatus.FAILED
+                doc_model.processing_status = ProcessingStatus.FAILED
                 db.commit()
                 return {"success": False, "error": f"Processing operations failed: {str(e)}"}
     
-            document.processing_status = ProcessingStatus.READY
+            doc_model.processing_status = ProcessingStatus.READY
             db.commit()
             self.logger.info(f"Document {document_id} status updated to READY")
 
@@ -133,6 +134,9 @@ class DocumentPipeline:
         except Exception as e:
             self.logger.error(f"Pipeline error for document {document.get('id', 'unknown')}: {str(e)}")
             return {"success": False, "error": str(e)}
+        
+        finally:
+            db.close()
     
     async def _embed_and_store(self, chunks: List[Dict[str, Any]]) -> bool:
         """Helper method to embed chunks and store them in vector database"""
@@ -147,8 +151,8 @@ class DocumentPipeline:
             return False
     
     async def process_documents(self, 
-                              documents: List[Dict[str, Any]],
-                              strategy: Optional[ChunkingStrategy] = None) -> Dict[str, Any]:
+            documents: List[Dict[str, Any]],
+            strategy: Optional[ChunkingStrategy] = None) -> Dict[str, Any]:
         
         results = []
         for document in documents:
@@ -250,9 +254,9 @@ class DocumentPipeline:
         return stats
     
     async def search_text(self, 
-                   query: str,
-                   size: int = 10,
-                   document_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        query: str,
+        size: int = 10,
+        document_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Search text using async operations"""
         if not self.elasticsearch:
             return []
@@ -264,9 +268,9 @@ class DocumentPipeline:
         )
     
     async def search_legal_content(self, 
-                           query: str,
-                           content_type: str = "all",
-                           size: int = 10) -> List[Dict[str, Any]]:
+            query: str,
+            content_type: str = "all",
+            size: int = 10) -> List[Dict[str, Any]]:
         """Search legal content using async operations"""
         if not self.elasticsearch:
             return []
