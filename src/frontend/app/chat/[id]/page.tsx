@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import Sidebar from "@/components/Sidebar";
+import Sidebar, { MainContent } from "@/components/Sidebar";
 import MainChatArea from "@/app/components/ChatPage/MainChatArea";
 import DocumentProcessing from "@/app/components/DocumentProcessing";
 
@@ -161,7 +161,6 @@ export default function ChatPage() {
         }
       } catch (err) {
         if (isMounted) {
-          console.error('Failed to fetch documents:', err);
           setError('Failed to fetch documents for this thread');
           setLoading(false);
         }
@@ -180,36 +179,42 @@ export default function ChatPage() {
   // Show loading state
   if (loading) {
     return (
-      <div className="flex h-screen">
+      <>
         <Sidebar />
-        <div className="w-4/5 h-screen bg-chat-area flex items-center justify-center">
-          <div className="text-white">Loading documents...</div>
-        </div>
-      </div>
+        <MainContent>
+          <div className="w-full h-screen bg-chat-area flex items-center justify-center">
+            <div className="text-white">Loading documents...</div>
+          </div>
+        </MainContent>
+      </>
     );
   }
 
   // Show error state
   if (error) {
     return (
-      <div className="flex h-screen">
+      <>
         <Sidebar />
-        <div className="w-4/5 h-screen bg-chat-area flex items-center justify-center">
-          <div className="text-red-400">{error}</div>
-        </div>
-      </div>
+        <MainContent>
+          <div className="w-full h-screen bg-chat-area flex items-center justify-center">
+            <div className="text-red-400">{error}</div>
+          </div>
+        </MainContent>
+      </>
     );
   }
 
   // Show no documents state
   if (documents.length === 0) {
     return (
-      <div className="flex h-screen">
+      <>
         <Sidebar />
-        <div className="w-4/5 h-screen bg-chat-area flex items-center justify-center">
-          <div className="text-white/60">No documents found in this thread</div>
-        </div>
-      </div>
+        <MainContent>
+          <div className="w-full h-screen bg-chat-area flex items-center justify-center">
+            <div className="text-white/60">No documents found in this thread</div>
+          </div>
+        </MainContent>
+      </>
     );
   }
 
@@ -219,43 +224,49 @@ export default function ChatPage() {
   // Show failed state
   if (combinedStatus?.processing_status === 'failed') {
     return (
-      <div className="flex h-screen">
+      <>
         <Sidebar />
-        <div className="w-4/5 h-screen bg-chat-area flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-red-400 mb-2">Document processing failed</div>
-            {combinedStatus.error_message && (
-              <div className="text-white/60 text-sm">
-                {combinedStatus.error_message}
-              </div>
-            )}
+        <MainContent>
+          <div className="w-full h-screen bg-chat-area flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-red-400 mb-2">Document processing failed</div>
+              {combinedStatus.error_message && (
+                <div className="text-white/60 text-sm">
+                  {combinedStatus.error_message}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+        </MainContent>
+      </>
     );
   }
 
   // Show chat interface if all documents are ready
   if (combinedStatus?.is_ready) {
     return (
-      <div className="flex h-screen">
+      <>
         <Sidebar />
-        <MainChatArea />
-      </div>
+        <MainContent>
+          <MainChatArea />
+        </MainContent>
+      </>
     );
   }
 
   // Show processing state
   return (
-    <div className="flex h-screen">
+    <>
       <Sidebar />
-      <DocumentProcessing 
-        documentId={combinedStatus?.id || 0}
-        status={combinedStatus}
-        onComplete={() => {
-          // The polling will automatically detect when all documents are ready
-        }}
-      />
-    </div>
+      <MainContent>
+        <DocumentProcessing 
+          documentId={combinedStatus?.id || 0}
+          status={combinedStatus}
+          onComplete={() => {
+            // The polling will automatically detect when all documents are ready
+          }}
+        />
+      </MainContent>
+    </>
   );
 }

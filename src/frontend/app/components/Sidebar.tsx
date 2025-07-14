@@ -2,11 +2,11 @@
 
 import { SignedIn, SignedOut, SignInButton, SignOutButton, UserButton } from '@clerk/nextjs'
 import { useUser } from '@clerk/nextjs'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, createContext, useContext } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
 import axios from 'axios'
-import { MessageSquare, Plus, FileText } from 'lucide-react'
+import { MessageSquare, Plus, Menu, X } from 'lucide-react'
 
 interface Thread {
   id: string;
@@ -15,12 +15,42 @@ interface Thread {
   updated_at: string;
 }
 
+interface SidebarContextType {
+  isOpen: boolean;
+  toggleSidebar: () => void;
+}
+
+const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
+
+export const useSidebar = () => {
+  const context = useContext(SidebarContext);
+  if (context === undefined) {
+    throw new Error('useSidebar must be used within a SidebarProvider');
+  }
+  return context;
+};
+
+export function SidebarProvider({ children }: { children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const toggleSidebar = () => {
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <SidebarContext.Provider value={{ isOpen, toggleSidebar }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+}
+
 export default function Sidebar() {
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isOpen, toggleSidebar } = useSidebar();
 
   useEffect(() => {
     const fetchThreads = async () => {
@@ -69,89 +99,141 @@ export default function Sidebar() {
   const currentThreadId = getCurrentThreadId();
   
   return (
-    <div className="w-1/5 h-screen bg-sidebar flex flex-col border-r border-white/10">
-      {/* Logo */}
-      <div className="p-4">
-        <div className="text-white font-bold">
-          <Image src="/logo.jpg" alt="Logo" width={50} height={50} />
+    <>
+      {/* Toggle Button - Always visible */}
+      <button
+        onClick={toggleSidebar}
+        className={`fixed top-4 left-4 z-50 w-10 h-10 bg-sidebar border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all duration-300 ${
+          isOpen ? 'rounded-lg' : 'rounded-l-lg rounded-r-none border-r-0'
+        }`}
+        aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
+      >
+        <Menu size={18} />
+      </button>
+
+      {/* New Chat Button - Emerges from sidebar button */}
+      <button
+        onClick={handleNewChat}
+        className={`fixed top-4 z-50 w-10 h-10 bg-sidebar border border-white/10 border-l-0 rounded-r-lg flex items-center justify-center text-white hover:bg-white/10 transition-all duration-300 ease-out ${
+          isOpen 
+            ? 'left-4 opacity-0 scale-0 pointer-events-none' 
+            : 'left-14 opacity-100 scale-100 pointer-events-auto'
+        }`}
+        style={{ 
+          transformOrigin: 'left center'
+        }}
+        aria-label="New Chat"
+      >
+        <Plus size={18} />
+      </button>
+
+      {/* Sidebar */}
+      <div 
+        className={`fixed left-0 top-0 h-screen bg-sidebar border-r border-white/10 z-40 transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        style={{ width: '20%' }}
+      >
+        {/* Logo - positioned to align with toggle button */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white font-bold">
+          <Image src="/logo.jpg" alt="Logo" width={40} height={40} />
         </div>
-      </div>
-      
-      {/* New Chat Button */}
-      <div className="p-4">
-        <button 
-          onClick={handleNewChat}
-          className="w-full py-3 px-4 text-white rounded-lg hover:bg-white/10 transition-colors flex items-center gap-2 font-medium"
-        >
-          <Plus size={18} />
-          New Chat
-        </button>
-      </div>
-      
-      {/* Threads List */}
-      <div className="flex-1 overflow-y-auto px-4">
-        <div className="text-white/60 text-xs uppercase font-semibold mb-3 px-2">
-          Recent Chats
+
+        {/* New Chat Button */}
+        <div className="p-3 pt-16">
+          <button 
+            onClick={handleNewChat}
+            className="w-full p-2.5 text-white rounded-4xl hover:bg-white/10 transition-colors gap-2 font-medium flex justify-center items-center"
+          >
+            <Plus size={18} />
+            New Chat
+          </button>
         </div>
         
-        {loading ? (
-          <div className="text-white/40 text-sm px-2">Loading chats...</div>
-        ) : threads.length === 0 ? (
-          <div className="text-white/40 text-sm px-2">No chats yet</div>
-        ) : (
-          <div className="space-y-1">
-            {threads.map((thread) => (
-              <button
-                key={thread.id}
-                onClick={() => handleThreadClick(thread.id)}
-                className={`w-full text-left p-2 rounded-lg transition-colors hover:bg-white/10 group ${
-                  currentThreadId === thread.id ? 'bg-white/10' : ''
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  <div className={`mt-1 ${currentThreadId === thread.id ? 'text-button' : 'text-white/40 group-hover:text-white/60'}`}>
-                    <MessageSquare size={14} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-sm font-medium truncate ${
-                      currentThreadId === thread.id ? 'text-white' : 'text-white/80 group-hover:text-white'
-                    }`}>
-                      {thread.title || 'New Chat'}
-                    </div>
-                    <div className="text-xs text-white/40 mt-0.5">
-                      {formatDate(thread.updated_at)}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
+        {/* Threads List */}
+        <div className="flex-1 overflow-y-auto px-4" style={{ height: 'calc(100vh - 200px)' }}>
+          <div className="text-white/60 text-xs uppercase font-semibold mb-3 px-2">
+            Recent Chats
           </div>
-        )}
+          
+          {loading ? (
+            <div className="text-white/40 text-sm px-2">Loading chats...</div>
+          ) : threads.length === 0 ? (
+            <div className="text-white/40 text-sm px-2">No chats yet</div>
+          ) : (
+            <div className="space-y-1">
+              {threads.map((thread) => (
+                <button
+                  key={thread.id}
+                  onClick={() => handleThreadClick(thread.id)}
+                  className={`w-full text-left p-2.5 rounded-4xl transition-colors hover:bg-white/10 group ${
+                    currentThreadId === thread.id ? 'bg-white/10' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className={`mt-1 ${currentThreadId === thread.id ? 'text-button' : 'text-white/40 group-hover:text-white/60'}`}>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm font-medium truncate ${
+                        currentThreadId === thread.id ? 'text-white' : 'text-white/80 group-hover:text-white'
+                      }`}>
+                        {thread.title || 'New Chat'}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* User Section */}
+        <div className="p-4 border-t border-white/10">
+          <SignedOut>
+            <button className="w-full py-2 px-4 rounded-lg text-white hover:bg-white/10">
+              <SignInButton />
+            </button>
+          </SignedOut>
+          <SignedIn>
+            <div className="flex items-center gap-3">
+              <UserButton />
+              <div className="flex-1 min-w-0">
+                <div className="text-white text-sm font-medium truncate">
+                  {user?.fullName || user?.emailAddresses?.[0]?.emailAddress}
+                </div>
+              </div>
+              <SignOutButton>
+                <button className="text-white/60 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10">
+                  Sign Out
+                </button>
+              </SignOutButton>
+            </div>
+          </SignedIn>
+        </div>
       </div>
 
-      {/* User Section */}
-      <div className="p-4 border-t border-white/10">
-        <SignedOut>
-          <button className="w-full py-2 px-4 rounded-lg text-white hover:bg-white/10">
-            <SignInButton />
-          </button>
-        </SignedOut>
-        <SignedIn>
-          <div className="flex items-center gap-3">
-            <UserButton />
-            <div className="flex-1 min-w-0">
-              <div className="text-white text-sm font-medium truncate">
-                {user?.fullName || user?.emailAddresses?.[0]?.emailAddress}
-              </div>
-            </div>
-            <SignOutButton>
-              <button className="text-white/60 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10">
-                Sign Out
-              </button>
-            </SignOutButton>
-          </div>
-        </SignedIn>
-      </div>
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-30 lg:hidden"
+          onClick={() => toggleSidebar()}
+        />
+      )}
+    </>
+  );
+}
+
+// Layout wrapper component
+export function MainContent({ children }: { children: React.ReactNode }) {
+  const { isOpen } = useSidebar();
+  
+  return (
+    <div 
+      className={`transition-all duration-300 ease-in-out h-screen ${
+        isOpen ? 'ml-[20%]' : 'ml-0'
+      }`}
+    >
+      {children}
     </div>
   );
 }

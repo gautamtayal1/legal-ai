@@ -93,7 +93,7 @@ export default function HomeChatArea() {
 
   return (
     <>
-      <div className="w-4/5 h-screen bg-chat-area relative overflow-y-auto">
+      <div className="w-full h-screen bg-chat-area relative overflow-y-auto">
         <div className="flex flex-col items-center justify-center min-h-full px-8">
           
           {/* Hero Section */}

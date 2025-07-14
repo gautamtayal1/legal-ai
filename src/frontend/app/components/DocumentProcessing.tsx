@@ -30,7 +30,7 @@ const DocumentProcessing = ({ documentId, status, onComplete }: DocumentProcessi
 
   if (!status) {
     return (
-      <div className="w-4/5 h-screen bg-chat-area relative overflow-y-auto">
+      <div className="w-full h-screen bg-chat-area relative overflow-y-auto">
         <div className="flex items-center justify-center min-h-full">
           <Loader2 className="w-8 h-8 text-white animate-spin" />
         </div>
@@ -39,7 +39,7 @@ const DocumentProcessing = ({ documentId, status, onComplete }: DocumentProcessi
   }
 
   return (
-    <div className="w-4/5 h-screen bg-chat-area relative overflow-y-auto">
+    <div className="w-full h-screen bg-chat-area relative overflow-y-auto">
       <div className="flex flex-col items-center justify-center min-h-full px-8 py-16">
         <div className="w-full max-w-2xl">
           
