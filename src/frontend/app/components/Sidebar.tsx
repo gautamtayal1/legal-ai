@@ -18,6 +18,8 @@ interface Thread {
 interface SidebarContextType {
   isOpen: boolean;
   toggleSidebar: () => void;
+  threads: Thread[];
+  setThreads: (threads: Thread[]) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -32,26 +34,14 @@ export const useSidebar = () => {
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(true);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const { user } = useUser();
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
   };
 
-  return (
-    <SidebarContext.Provider value={{ isOpen, toggleSidebar }}>
-      {children}
-    </SidebarContext.Provider>
-  );
-}
-
-export default function Sidebar() {
-  const { user } = useUser();
-  const router = useRouter();
-  const pathname = usePathname();
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { isOpen, toggleSidebar } = useSidebar();
-
+  // Fetch threads once and cache them
   useEffect(() => {
     const fetchThreads = async () => {
       if (!user?.id) return;
@@ -61,13 +51,24 @@ export default function Sidebar() {
         setThreads(response.data);
       } catch (error) {
         console.error('Failed to fetch threads:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchThreads();
   }, [user?.id]);
+
+  return (
+    <SidebarContext.Provider value={{ isOpen, toggleSidebar, threads, setThreads }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+}
+
+export default function Sidebar() {
+  const { user } = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { isOpen, toggleSidebar, threads } = useSidebar();
 
   const handleNewChat = () => {
     router.push('/');
@@ -155,35 +156,29 @@ export default function Sidebar() {
             Recent Chats
           </div>
           
-          {loading ? (
-            <div className="text-white/40 text-sm px-2">Loading chats...</div>
-          ) : threads.length === 0 ? (
-            <div className="text-white/40 text-sm px-2">No chats yet</div>
-          ) : (
-            <div className="space-y-1">
-              {threads.map((thread) => (
-                <button
-                  key={thread.id}
-                  onClick={() => handleThreadClick(thread.id)}
-                  className={`w-full text-left p-2.5 rounded-4xl transition-colors hover:bg-white/10 group ${
-                    currentThreadId === thread.id ? 'bg-white/10' : ''
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className={`mt-1 ${currentThreadId === thread.id ? 'text-button' : 'text-white/40 group-hover:text-white/60'}`}>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-sm font-medium truncate ${
-                        currentThreadId === thread.id ? 'text-white' : 'text-white/80 group-hover:text-white'
-                      }`}>
-                        {thread.title || 'New Chat'}
-                      </div>
+          <div className="space-y-1">
+            {threads.map((thread) => (
+              <button
+                key={thread.id}
+                onClick={() => handleThreadClick(thread.id)}
+                className={`w-full text-left p-2.5 rounded-4xl transition-colors hover:bg-white/10 group ${
+                  currentThreadId === thread.id ? 'bg-white/10' : ''
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <div className={`mt-1 ${currentThreadId === thread.id ? 'text-button' : 'text-white/40 group-hover:text-white/60'}`}>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-sm font-medium truncate ${
+                      currentThreadId === thread.id ? 'text-white' : 'text-white/80 group-hover:text-white'
+                    }`}>
+                      {thread.title || 'New Chat'}
                     </div>
                   </div>
-                </button>
-              ))}
-            </div>
-          )}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* User Section - Always at bottom */}
