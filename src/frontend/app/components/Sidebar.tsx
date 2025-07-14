@@ -110,9 +110,10 @@ export default function Sidebar() {
       >
         <Menu size={18} />
       </button>
+      {/* New Chat Button - Emerges from sidebar button */}
       <button
         onClick={handleNewChat}
-        className={`fixed top-4 z-50 w-10 h-10 bg-sidebar border border-white/10 border-l-0 rounded-r-lg flex items-center justify-center text-white hover:bg-white/10 transition-all duration-300 ease-out ${
+        className={`fixed top-4 z-50 w-10 h-10 bg-button border border-white/10 border-l-0 rounded-r-lg flex items-center justify-center text-white hover:bg-button/80 transition-all duration-300 ease-out ${
           isOpen 
             ? 'left-4 opacity-0 scale-0 pointer-events-none' 
             : 'left-14 opacity-100 scale-100 pointer-events-auto'
@@ -127,34 +128,38 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <div 
-        className={`fixed left-0 top-0 h-screen bg-sidebar border-r border-white/10 z-40 transition-transform duration-300 ease-in-out ${
+        className={`fixed left-0 top-0 h-screen bg-sidebar border-r border-white/10 z-40 transition-transform duration-300 ease-in-out flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ width: '20%' }}
       >
         {/* Logo - positioned to align with toggle button */}
-        <div className="absolute top-3.5 left-1/2 transform -translate-x-1/2 text-white font-bold">
-          <Image src="/logo.jpg" alt="Logo" width={50} height={50} />
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white font-bold">
+          <Image src="/logo.jpg" alt="Logo" width={40} height={40} />
         </div>
 
         {/* New Chat Button */}
-        <div className="p-3 my-5 pt-16">
+        <div className="p-3 pt-16 flex-shrink-0">
           <button 
             onClick={handleNewChat}
-            className="w-full p-2.5 text-white rounded-4xl hover:bg-white/10 transition-colors gap-2 font-medium flex items-center"
+            className="w-full p-1.5 my-5 text-white bg-button hover:bg-button/80 rounded-xl transition-colors gap-2 font-medium flex justify-center items-center"
           >
             <Plus size={18} />
             New Chat
           </button>
         </div>
         
-        {/* Threads List */}
-        <div className="flex-1 overflow-y-auto px-4" style={{ height: 'calc(100vh - 200px)' }}>
+        {/* Threads List - Scrollable and takes remaining space */}
+        <div className="flex-1 overflow-y-auto px-4 min-h-0">
           <div className="text-white/60 text-xs uppercase font-semibold mb-3 px-2">
             Recent Chats
           </div>
           
-          
+          {loading ? (
+            <div className="text-white/40 text-sm px-2">Loading chats...</div>
+          ) : threads.length === 0 ? (
+            <div className="text-white/40 text-sm px-2">No chats yet</div>
+          ) : (
             <div className="space-y-1">
               {threads.map((thread) => (
                 <button
@@ -178,10 +183,11 @@ export default function Sidebar() {
                 </button>
               ))}
             </div>
+          )}
         </div>
 
-        {/* User Section */}
-        <div className="p-4 border-t border-white/10">
+        {/* User Section - Always at bottom */}
+        <div className="p-4 border-t border-white/10 flex-shrink-0">
           <SignedOut>
             <button className="w-full py-2 px-4 rounded-lg text-white hover:bg-white/10">
               <SignInButton />
