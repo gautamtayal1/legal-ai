@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from core.database import get_db
 from models.document import Document, ProcessingStatus
-from services.document_processing.retrieval.retrieval_service import RetrievalService, RetrievalConfig
+from services.document_processing.retrieval import RetrievalService, RetrievalConfig
 from services.document_processing.embedding.vector_storage_service import VectorStorageService
 from services.document_processing.search_engine.elasticsearch_service import ElasticsearchService
 import logging
@@ -21,6 +21,34 @@ router = APIRouter(
 )
 
 logger = logging.getLogger(__name__)
+
+def _convert_search_results_to_dict(search_results):
+    """Helper function to convert SearchResult objects to dictionaries"""
+    results_dict = []
+    for result in search_results:
+        results_dict.append({
+            "id": result.id,
+            "content": result.content,
+            "metadata": result.metadata,
+            "similarity_score": result.similarity_score,
+            "keyword_score": result.keyword_score,
+            "combined_score": result.combined_score,
+            "highlights": result.highlights or {}
+        })
+    return results_dict
+
+def _convert_similar_results_to_dict(search_results):
+    """Helper function to convert SearchResult objects to dictionaries for similar content"""
+    results_dict = []
+    for result in search_results:
+        results_dict.append({
+            "id": result.id,
+            "content": result.content,
+            "metadata": result.metadata,
+            "similarity_score": result.similarity_score,
+            "combined_score": result.combined_score
+        })
+    return results_dict
 
 # Pydantic models for request/response
 class QueryRequest(BaseModel):
@@ -48,7 +76,7 @@ class QueryResponse(BaseModel):
     answer: str
     confidence: float
     citations: List[Dict[str, Any]]
-    sources_used: int
+    sources_used: List[str]
     processing_time: float
     query_intent: str
     warnings: List[str]
@@ -136,6 +164,9 @@ async def ask_question(
             document_ids=request.document_ids
         )
         
+        # Convert SearchResult objects to dictionaries for response
+        search_results_dict = _convert_search_results_to_dict(result.search_results)
+        
         # Convert to response model
         response = QueryResponse(
             query=result.query,
@@ -147,7 +178,7 @@ async def ask_question(
             query_intent=result.query_intent,
             warnings=result.warnings,
             followup_questions=result.followup_questions,
-            search_results=result.search_results
+            search_results=search_results_dict
         )
         
         logger.info(f"Question answered successfully: {request.query[:50]}...")
@@ -200,8 +231,11 @@ async def search_documents(
         
         processing_time = time.time() - start_time
         
+        # Convert SearchResult objects to dictionaries
+        results_dict = _convert_search_results_to_dict(search_results)
+        
         response = SearchResponse(
-            results=search_results,
+            results=results_dict,
             total_results=len(search_results),
             processing_time=processing_time
         )
@@ -248,10 +282,13 @@ async def find_similar_content(
             max_results=request.max_results
         )
         
+        # Convert SearchResult objects to dictionaries
+        results_dict = _convert_similar_results_to_dict(similar_results)
+        
         logger.info(f"Similar content search completed: {len(similar_results)} results")
         
         return {
-            "similar_content": similar_results,
+            "similar_content": results_dict,
             "total_results": len(similar_results)
         }
         
@@ -334,8 +371,12 @@ async def batch_query(
         )
         
         # Convert to response models
-        responses = [
-            QueryResponse(
+        responses = []
+        for result in results:
+            # Convert SearchResult objects to dictionaries
+            search_results_dict = _convert_search_results_to_dict(result.search_results)
+            
+            response = QueryResponse(
                 query=result.query,
                 answer=result.answer,
                 confidence=result.confidence,
@@ -345,10 +386,9 @@ async def batch_query(
                 query_intent=result.query_intent,
                 warnings=result.warnings,
                 followup_questions=result.followup_questions,
-                search_results=result.search_results
+                search_results=search_results_dict
             )
-            for result in results
-        ]
+            responses.append(response)
         
         logger.info(f"Batch query completed: {len(responses)}/{len(request.queries)} successful")
         

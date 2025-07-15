@@ -1,349 +1,288 @@
 """
-Query preprocessing service for legal document retrieval.
-Implements Step 12 from architecture: Query Preprocessing
-"""
+Query Processor - Step 12: Query Preprocessing
 
+Handles query analysis, intent detection, and query enhancement
+for optimal search performance.
+"""
 import re
 import logging
-from typing import List, Dict, Any, Optional, Set
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_core.prompts import PromptTemplate
 
 
 class QueryIntent(Enum):
-    DEFINITION = "definition"
-    OBLIGATIONS = "obligations"
-    TERMINATION = "termination"
-    PARTIES = "parties"
-    DEADLINES = "deadlines"
-    RIGHTS = "rights"
     GENERAL = "general"
+    DEFINITION = "definition"
+    OBLIGATION = "obligation" 
+    TIMELINE = "timeline"
+    PARTY = "party"
+    TERMINATION = "termination"
+    PAYMENT = "payment"
+    LIABILITY = "liability"
 
 
 @dataclass
 class ProcessedQuery:
     original_query: str
+    processed_query: str
     intent: QueryIntent
     entities: List[str]
-    expanded_terms: List[str]
-    legal_concepts: List[str]
-    search_variations: List[str]
-    confidence: float
+    keywords: List[str]
+    synonyms: List[str]
+    query_variations: List[str]
+    metadata: Dict[str, Any]
 
 
 class QueryProcessor:
-    """
-    Processes user queries for optimal legal document retrieval.
-    Handles intent detection, entity extraction, and query expansion.
-    """
-    
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         
-        # Legal term patterns
-        self.legal_patterns = {
+        # Legal intent patterns
+        self.intent_patterns = {
             QueryIntent.DEFINITION: [
-                r"what is|what are|define|definition|meaning of|means",
-                r"shall mean|is defined as|refers to"
+                r'what\s+(?:is|are|does|means?)\s+',
+                r'define\s+',
+                r'definition\s+of\s+',
+                r'meaning\s+of\s+'
             ],
-            QueryIntent.OBLIGATIONS: [
-                r"must|shall|required|obligation|duty|responsible",
-                r"comply|perform|deliver|provide"
+            QueryIntent.OBLIGATION: [
+                r'(?:must|shall|required?|obligat\w+|duty|responsible)',
+                r'what\s+(?:do|does)\s+\w+\s+(?:have\s+to|need\s+to)',
+                r'responsibilities?\s+of\s+'
+            ],
+            QueryIntent.TIMELINE: [
+                r'(?:when|timeline|deadline|due\s+date|within\s+\d+)',
+                r'how\s+long\s+',
+                r'\d+\s+days?\s+'
+            ],
+            QueryIntent.PARTY: [
+                r'(?:who\s+is|which\s+party|company|client|contractor)',
+                r'parties?\s+(?:to|in)\s+'
             ],
             QueryIntent.TERMINATION: [
-                r"terminat|end|cancel|expire|dissolution",
-                r"breach|default|notice period"
+                r'(?:terminat\w+|end\w+|cancel\w+|expir\w+)',
+                r'how\s+to\s+(?:end|stop|cancel)',
+                r'grounds?\s+for\s+termination'
             ],
-            QueryIntent.PARTIES: [
-                r"party|parties|company|client|contractor",
-                r"who is|which party|responsible party"
+            QueryIntent.PAYMENT: [
+                r'(?:payment|fee|cost|price|amount|invoice|bill)',
+                r'how\s+much\s+',
+                r'money|dollars?\s+'
             ],
-            QueryIntent.DEADLINES: [
-                r"when|deadline|due date|within|days|months",
-                r"notice period|time limit|expiration"
-            ],
-            QueryIntent.RIGHTS: [
-                r"rights|entitle|may|can|permitted",
-                r"intellectual property|ownership|license"
+            QueryIntent.LIABILITY: [
+                r'(?:liability|liable|responsible|damages?|indemnif\w+)',
+                r'who\s+(?:pays?|is\s+responsible)',
+                r'damages?\s+for\s+'
             ]
         }
         
-        # Legal concept synonyms
-        self.legal_synonyms = {
-            "termination": ["ending", "cancellation", "expiration", "dissolution"],
-            "obligations": ["duties", "responsibilities", "requirements"],
-            "parties": ["entities", "signatories", "contractors"],
-            "breach": ["violation", "default", "non-compliance"],
-            "notice": ["notification", "warning", "communication"],
-            "deadline": ["due date", "time limit", "expiration"],
-            "rights": ["entitlements", "privileges", "permissions"],
-            "liability": ["responsibility", "accountability", "damages"],
-            "intellectual property": ["IP", "patents", "copyrights", "trademarks"],
-            "confidential": ["proprietary", "sensitive", "non-disclosure"]
+        # Legal term synonyms
+        self.synonyms = {
+            'termination': ['cancellation', 'ending', 'expiration', 'dissolution'],
+            'obligation': ['duty', 'responsibility', 'requirement', 'commitment'],
+            'party': ['entity', 'company', 'organization', 'contractor'],
+            'payment': ['fee', 'compensation', 'amount', 'cost', 'price'],
+            'liability': ['responsibility', 'accountability', 'damages'],
+            'agreement': ['contract', 'deal', 'arrangement', 'understanding']
         }
         
         # Common legal entities
         self.legal_entities = [
-            "company", "corporation", "LLC", "partnership", "client",
-            "contractor", "vendor", "supplier", "licensor", "licensee",
-            "employer", "employee", "party", "parties"
+            'company', 'corporation', 'client', 'contractor', 'vendor',
+            'supplier', 'customer', 'buyer', 'seller', 'lessor', 'lessee'
         ]
-
-    async def process_query(self, query: str) -> ProcessedQuery:
+    
+    def process_query(self, query: str) -> ProcessedQuery:
         """
-        Process a user query for legal document retrieval.
+        Process a user query for optimal retrieval.
         
-        Args:
-            query: The user's natural language query
-            
-        Returns:
-            ProcessedQuery object with analyzed query components
+        This implements Step 12: Query Preprocessing from the architecture.
         """
         try:
             # Clean and normalize query
-            cleaned_query = self._clean_query(query)
+            processed_query = self._clean_query(query)
             
             # Detect intent
-            intent = self._detect_intent(cleaned_query)
+            intent = self._detect_intent(query)
             
             # Extract entities
-            entities = self._extract_entities(cleaned_query)
+            entities = self._extract_entities(query)
             
-            # Extract legal concepts
-            legal_concepts = self._extract_legal_concepts(cleaned_query)
+            # Extract keywords
+            keywords = self._extract_keywords(processed_query)
             
-            # Expand query terms
-            expanded_terms = self._expand_query_terms(cleaned_query, legal_concepts)
+            # Generate synonyms
+            synonyms = self._generate_synonyms(keywords)
             
-            # Generate search variations
-            search_variations = self._generate_search_variations(cleaned_query, expanded_terms)
+            # Create query variations
+            variations = self._create_query_variations(processed_query, synonyms)
             
-            # Calculate confidence score
-            confidence = self._calculate_confidence(intent, entities, legal_concepts)
+            # Add metadata
+            metadata = {
+                'confidence': self._calculate_intent_confidence(query, intent),
+                'complexity': self._assess_query_complexity(query),
+                'legal_context': self._detect_legal_context(query)
+            }
             
-            processed_query = ProcessedQuery(
-                original_query=query,
-                intent=intent,
-                entities=entities,
-                expanded_terms=expanded_terms,
-                legal_concepts=legal_concepts,
-                search_variations=search_variations,
-                confidence=confidence
-            )
-            
-            self.logger.info(f"Processed query: {query} -> Intent: {intent.value}, "
-                           f"Entities: {len(entities)}, Concepts: {len(legal_concepts)}")
-            
-            return processed_query
-            
-        except Exception as e:
-            self.logger.error(f"Error processing query: {str(e)}")
-            # Return basic processed query on error
             return ProcessedQuery(
                 original_query=query,
+                processed_query=processed_query,
+                intent=intent,
+                entities=entities,
+                keywords=keywords,
+                synonyms=synonyms,
+                query_variations=variations,
+                metadata=metadata
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Query processing failed: {str(e)}")
+            return ProcessedQuery(
+                original_query=query,
+                processed_query=query,
                 intent=QueryIntent.GENERAL,
                 entities=[],
-                expanded_terms=[query],
-                legal_concepts=[],
-                search_variations=[query],
-                confidence=0.5
+                keywords=[],
+                synonyms=[],
+                query_variations=[query],
+                metadata={'error': str(e)}
             )
-
+    
     def _clean_query(self, query: str) -> str:
-        """Clean and normalize the query text."""
+        """Clean and normalize the query"""
+        # Convert to lowercase
+        query = query.lower().strip()
+        
         # Remove extra whitespace
-        query = re.sub(r'\s+', ' ', query.strip())
+        query = re.sub(r'\s+', ' ', query)
         
-        # Convert to lowercase for processing
-        query = query.lower()
+        # Normalize contractions
+        contractions = {
+            "what's": "what is",
+            "what're": "what are", 
+            "who's": "who is",
+            "how's": "how is",
+            "can't": "cannot",
+            "won't": "will not",
+            "shouldn't": "should not"
+        }
         
-        # Remove common question words that don't add value
-        query = re.sub(r'\b(what|when|where|why|how|can|could|should|would|will)\b', '', query)
+        for contraction, expansion in contractions.items():
+            query = query.replace(contraction, expansion)
         
-        # Remove extra punctuation
-        query = re.sub(r'[^\w\s\-\']', ' ', query)
-        
-        return query.strip()
-
+        return query
+    
     def _detect_intent(self, query: str) -> QueryIntent:
-        """Detect the intent of the query based on legal patterns."""
-        intent_scores = {}
+        """Detect the primary intent of the query"""
+        query_lower = query.lower()
         
-        for intent, patterns in self.legal_patterns.items():
+        # Score each intent
+        intent_scores = {}
+        for intent, patterns in self.intent_patterns.items():
             score = 0
             for pattern in patterns:
-                matches = len(re.findall(pattern, query, re.IGNORECASE))
+                matches = len(re.findall(pattern, query_lower))
                 score += matches
             intent_scores[intent] = score
         
-        # Return the intent with highest score, or GENERAL if no clear intent
-        if intent_scores and max(intent_scores.values()) > 0:
+        # Return intent with highest score, or GENERAL if no matches
+        if max(intent_scores.values()) > 0:
             return max(intent_scores, key=intent_scores.get)
         
         return QueryIntent.GENERAL
-
+    
     def _extract_entities(self, query: str) -> List[str]:
-        """Extract legal entities from the query."""
+        """Extract legal entities from the query"""
         entities = []
+        query_lower = query.lower()
         
-        # Extract legal entities
+        # Find legal entities
         for entity in self.legal_entities:
-            if entity.lower() in query.lower():
+            if entity in query_lower:
                 entities.append(entity)
         
-        # Extract potential proper nouns (capitalized words)
-        proper_nouns = re.findall(r'\b[A-Z][a-z]+\b', query)
-        entities.extend(proper_nouns)
-        
-        # Extract numbers and dates
-        numbers = re.findall(r'\b\d+\b', query)
-        entities.extend(numbers)
-        
-        # Extract quoted terms
+        # Extract quoted terms (likely definitions or specific clauses)
         quoted_terms = re.findall(r'"([^"]*)"', query)
         entities.extend(quoted_terms)
         
-        return list(set(entities))  # Remove duplicates
-
-    def _extract_legal_concepts(self, query: str) -> List[str]:
-        """Extract legal concepts and terms from the query."""
-        concepts = []
+        # Extract section references
+        section_refs = re.findall(r'section\s+(\d+(?:\.\d+)*)', query_lower)
+        entities.extend([f"section {ref}" for ref in section_refs])
         
-        # Check for legal concepts in our synonym dictionary
-        for concept, synonyms in self.legal_synonyms.items():
-            if concept.lower() in query.lower():
-                concepts.append(concept)
-            
-            # Check for synonyms
-            for synonym in synonyms:
-                if synonym.lower() in query.lower():
-                    concepts.append(concept)
-                    break
-        
-        # Extract common legal phrases
-        legal_phrases = [
-            "notice period", "breach of contract", "intellectual property",
-            "confidentiality agreement", "non-disclosure", "force majeure",
-            "governing law", "dispute resolution", "limitation of liability",
-            "indemnification", "warranty", "representation"
-        ]
-        
-        for phrase in legal_phrases:
-            if phrase.lower() in query.lower():
-                concepts.append(phrase)
-        
-        return list(set(concepts))
-
-    def _expand_query_terms(self, query: str, legal_concepts: List[str]) -> List[str]:
-        """Expand query terms with synonyms and related terms."""
-        expanded_terms = [query]
-        
-        # Add synonyms for identified legal concepts
-        for concept in legal_concepts:
-            if concept in self.legal_synonyms:
-                expanded_terms.extend(self.legal_synonyms[concept])
-        
-        # Add common legal variations
-        variations = {
-            "terminate": ["end", "cancel", "dissolve"],
-            "contract": ["agreement", "arrangement"],
-            "payment": ["compensation", "remuneration"],
-            "deliverable": ["work product", "output"],
-            "confidential": ["proprietary", "sensitive"]
+        return list(set(entities))
+    
+    def _extract_keywords(self, query: str) -> List[str]:
+        """Extract important keywords from the query"""
+        # Remove common stop words but keep legal stop words
+        legal_stop_words = {
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+            'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+            'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'
         }
         
-        for term, synonyms in variations.items():
-            if term.lower() in query.lower():
-                expanded_terms.extend(synonyms)
+        # Split into words and filter
+        words = re.findall(r'\b\w+\b', query.lower())
+        keywords = [w for w in words if w not in legal_stop_words and len(w) > 2]
         
-        return list(set(expanded_terms))
-
-    def _generate_search_variations(self, query: str, expanded_terms: List[str]) -> List[str]:
-        """Generate different search variations for the query."""
+        return keywords
+    
+    def _generate_synonyms(self, keywords: List[str]) -> List[str]:
+        """Generate synonyms for keywords"""
+        synonyms = []
+        for keyword in keywords:
+            if keyword in self.synonyms:
+                synonyms.extend(self.synonyms[keyword])
+        
+        return list(set(synonyms))
+    
+    def _create_query_variations(self, query: str, synonyms: List[str]) -> List[str]:
+        """Create variations of the query using synonyms"""
         variations = [query]
         
-        # Add expanded terms as separate searches
-        variations.extend(expanded_terms)
-        
-        # Create phrase variations
-        words = query.split()
-        if len(words) > 1:
-            # Add partial phrases
-            for i in range(len(words) - 1):
-                phrase = " ".join(words[i:i+2])
-                variations.append(phrase)
-        
-        # Add boolean variations for complex queries
-        if len(words) > 2:
-            # AND variation
-            and_query = " AND ".join(words)
-            variations.append(and_query)
-            
-            # OR variation
-            or_query = " OR ".join(words)
-            variations.append(or_query)
+        # Create synonym variations
+        for base_word, synonym_list in self.synonyms.items():
+            if base_word in query:
+                for synonym in synonym_list[:2]:  # Limit to 2 synonyms to avoid explosion
+                    variation = query.replace(base_word, synonym)
+                    variations.append(variation)
         
         return list(set(variations))
-
-    def _calculate_confidence(self, intent: QueryIntent, entities: List[str], 
-                            legal_concepts: List[str]) -> float:
-        """Calculate confidence score for the processed query."""
-        confidence = 0.5  # Base confidence
+    
+    def _calculate_intent_confidence(self, query: str, intent: QueryIntent) -> float:
+        """Calculate confidence score for the detected intent"""
+        if intent == QueryIntent.GENERAL:
+            return 0.5
         
-        # Boost confidence based on intent detection
-        if intent != QueryIntent.GENERAL:
-            confidence += 0.2
+        query_lower = query.lower()
+        patterns = self.intent_patterns.get(intent, [])
         
-        # Boost confidence based on entity extraction
-        if entities:
-            confidence += min(0.2, len(entities) * 0.05)
+        total_matches = sum(len(re.findall(pattern, query_lower)) for pattern in patterns)
         
-        # Boost confidence based on legal concept detection
-        if legal_concepts:
-            confidence += min(0.3, len(legal_concepts) * 0.1)
+        # Simple confidence based on pattern matches
+        return min(1.0, 0.6 + (total_matches * 0.2))
+    
+    def _assess_query_complexity(self, query: str) -> str:
+        """Assess query complexity"""
+        word_count = len(query.split())
         
-        # Cap confidence at 1.0
-        return min(1.0, confidence)
-
-    def get_search_strategy(self, processed_query: ProcessedQuery) -> Dict[str, Any]:
-        """
-        Get search strategy recommendations based on processed query.
+        if word_count <= 3:
+            return "simple"
+        elif word_count <= 10:
+            return "medium"
+        else:
+            return "complex"
+    
+    def _detect_legal_context(self, query: str) -> Dict[str, bool]:
+        """Detect legal context indicators"""
+        query_lower = query.lower()
         
-        Args:
-            processed_query: The processed query object
-            
-        Returns:
-            Dictionary containing search strategy recommendations
-        """
-        strategy = {
-            "vector_search_weight": 0.6,
-            "keyword_search_weight": 0.4,
-            "filters": {},
-            "boost_fields": [],
-            "search_type": "hybrid"
-        }
-        
-        # Adjust weights based on intent
-        if processed_query.intent == QueryIntent.DEFINITION:
-            strategy["keyword_search_weight"] = 0.7
-            strategy["vector_search_weight"] = 0.3
-            strategy["boost_fields"] = ["legal_definitions"]
-        
-        elif processed_query.intent == QueryIntent.OBLIGATIONS:
-            strategy["vector_search_weight"] = 0.8
-            strategy["keyword_search_weight"] = 0.2
-            strategy["boost_fields"] = ["legal_obligations"]
-        
-        elif processed_query.intent == QueryIntent.PARTIES:
-            strategy["keyword_search_weight"] = 0.6
-            strategy["vector_search_weight"] = 0.4
-            strategy["boost_fields"] = ["legal_parties"]
-        
-        # Add filters based on legal concepts
-        if "confidential" in processed_query.legal_concepts:
-            strategy["filters"]["has_legal_context"] = True
-        
-        return strategy
+        return {
+            'has_section_reference': bool(re.search(r'section\s+\d+', query_lower)),
+            'has_legal_terms': any(term in query_lower for term in 
+                                 ['contract', 'agreement', 'clause', 'provision', 'term']),
+            'has_obligations': any(term in query_lower for term in 
+                                 ['must', 'shall', 'required', 'obligation']),
+            'has_parties': any(term in query_lower for term in self.legal_entities)
+        } 

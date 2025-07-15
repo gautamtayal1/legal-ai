@@ -17,6 +17,7 @@ and proper citation tracking.
 from .text_extraction import TextExtractionService, extract_text, extract_batch, is_supported, ExtractionResult
 from .embedding import EmbeddingService, EmbeddingConfig, VectorStorageService, VectorStorageConfig
 from .search_engine import ElasticsearchService, ElasticsearchConfig
+from .retrieval import RetrievalService, RetrievalConfig
 
 __all__ = [
     # Text extraction
@@ -34,5 +35,9 @@ __all__ = [
     
     # Search engine
     "ElasticsearchService",
-    "ElasticsearchConfig"
+    "ElasticsearchConfig",
+    
+    # Retrieval services
+    "RetrievalService",
+    "RetrievalConfig"
 ] 
