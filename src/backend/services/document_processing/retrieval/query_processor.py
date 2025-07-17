@@ -27,10 +27,7 @@ class ProcessedQuery:
     original_query: str
     processed_query: str
     intent: QueryIntent
-    entities: List[str]
     keywords: List[str]
-    synonyms: List[str]
-    query_variations: List[str]
     metadata: Dict[str, Any]
 
 
@@ -77,21 +74,6 @@ class QueryProcessor:
             ]
         }
         
-        # Legal term synonyms
-        self.synonyms = {
-            'termination': ['cancellation', 'ending', 'expiration', 'dissolution'],
-            'obligation': ['duty', 'responsibility', 'requirement', 'commitment'],
-            'party': ['entity', 'company', 'organization', 'contractor'],
-            'payment': ['fee', 'compensation', 'amount', 'cost', 'price'],
-            'liability': ['responsibility', 'accountability', 'damages'],
-            'agreement': ['contract', 'deal', 'arrangement', 'understanding']
-        }
-        
-        # Common legal entities
-        self.legal_entities = [
-            'company', 'corporation', 'client', 'contractor', 'vendor',
-            'supplier', 'customer', 'buyer', 'seller', 'lessor', 'lessee'
-        ]
     
     def process_query(self, query: str) -> ProcessedQuery:
         """
@@ -106,34 +88,15 @@ class QueryProcessor:
             # Detect intent
             intent = self._detect_intent(query)
             
-            # Extract entities
-            entities = self._extract_entities(query)
-            
             # Extract keywords
             keywords = self._extract_keywords(processed_query)
-            
-            # Generate synonyms
-            synonyms = self._generate_synonyms(keywords)
-            
-            # Create query variations
-            variations = self._create_query_variations(processed_query, synonyms)
-            
-            # Add metadata
-            metadata = {
-                'confidence': self._calculate_intent_confidence(query, intent),
-                'complexity': self._assess_query_complexity(query),
-                'legal_context': self._detect_legal_context(query)
-            }
             
             return ProcessedQuery(
                 original_query=query,
                 processed_query=processed_query,
                 intent=intent,
-                entities=entities,
                 keywords=keywords,
-                synonyms=synonyms,
-                query_variations=variations,
-                metadata=metadata
+                metadata={}
             )
             
         except Exception as e:
@@ -142,10 +105,7 @@ class QueryProcessor:
                 original_query=query,
                 processed_query=query,
                 intent=QueryIntent.GENERAL,
-                entities=[],
                 keywords=[],
-                synonyms=[],
-                query_variations=[query],
                 metadata={'error': str(e)}
             )
     
@@ -192,25 +152,6 @@ class QueryProcessor:
         
         return QueryIntent.GENERAL
     
-    def _extract_entities(self, query: str) -> List[str]:
-        """Extract legal entities from the query"""
-        entities = []
-        query_lower = query.lower()
-        
-        # Find legal entities
-        for entity in self.legal_entities:
-            if entity in query_lower:
-                entities.append(entity)
-        
-        # Extract quoted terms (likely definitions or specific clauses)
-        quoted_terms = re.findall(r'"([^"]*)"', query)
-        entities.extend(quoted_terms)
-        
-        # Extract section references
-        section_refs = re.findall(r'section\s+(\d+(?:\.\d+)*)', query_lower)
-        entities.extend([f"section {ref}" for ref in section_refs])
-        
-        return list(set(entities))
     
     def _extract_keywords(self, query: str) -> List[str]:
         """Extract important keywords from the query"""
@@ -228,61 +169,8 @@ class QueryProcessor:
         
         return keywords
     
-    def _generate_synonyms(self, keywords: List[str]) -> List[str]:
-        """Generate synonyms for keywords"""
-        synonyms = []
-        for keyword in keywords:
-            if keyword in self.synonyms:
-                synonyms.extend(self.synonyms[keyword])
-        
-        return list(set(synonyms))
     
-    def _create_query_variations(self, query: str, synonyms: List[str]) -> List[str]:
-        """Create variations of the query using synonyms"""
-        variations = [query]
-        
-        # Create synonym variations
-        for base_word, synonym_list in self.synonyms.items():
-            if base_word in query:
-                for synonym in synonym_list[:2]:  # Limit to 2 synonyms to avoid explosion
-                    variation = query.replace(base_word, synonym)
-                    variations.append(variation)
-        
-        return list(set(variations))
     
-    def _calculate_intent_confidence(self, query: str, intent: QueryIntent) -> float:
-        """Calculate confidence score for the detected intent"""
-        if intent == QueryIntent.GENERAL:
-            return 0.5
-        
-        query_lower = query.lower()
-        patterns = self.intent_patterns.get(intent, [])
-        
-        total_matches = sum(len(re.findall(pattern, query_lower)) for pattern in patterns)
-        
-        # Simple confidence based on pattern matches
-        return min(1.0, 0.6 + (total_matches * 0.2))
     
-    def _assess_query_complexity(self, query: str) -> str:
-        """Assess query complexity"""
-        word_count = len(query.split())
-        
-        if word_count <= 3:
-            return "simple"
-        elif word_count <= 10:
-            return "medium"
-        else:
-            return "complex"
     
-    def _detect_legal_context(self, query: str) -> Dict[str, bool]:
-        """Detect legal context indicators"""
-        query_lower = query.lower()
-        
-        return {
-            'has_section_reference': bool(re.search(r'section\s+\d+', query_lower)),
-            'has_legal_terms': any(term in query_lower for term in 
-                                 ['contract', 'agreement', 'clause', 'provision', 'term']),
-            'has_obligations': any(term in query_lower for term in 
-                                 ['must', 'shall', 'required', 'obligation']),
-            'has_parties': any(term in query_lower for term in self.legal_entities)
-        } 
+ 

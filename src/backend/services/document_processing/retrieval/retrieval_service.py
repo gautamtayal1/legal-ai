@@ -1,14 +1,3 @@
- """
-Retrieval Service - Steps 12-15: Complete Retrieval Pipeline
-
-Implements:
-- Step 12: Query Preprocessing
-- Step 13: Semantic + Keyword Search  
-- Step 14: LLM Answer Generation
-- Step 15: Response Formatting
-
-Uses LangChain where possible while maintaining customization.
-"""
 import os
 import asyncio
 import logging
@@ -29,8 +18,6 @@ class RetrievalConfig:
     keyword_weight: float = 0.4
     max_search_results: int = 20
     max_context_chunks: int = 10
-    enable_reranking: bool = True
-    generate_followup_questions: bool = True
     openai_model: str = "gpt-4o-mini"
     max_tokens: int = 1000
     temperature: float = 0.1
@@ -41,9 +28,7 @@ class SearchResult:
     id: str
     content: str
     metadata: Dict[str, Any]
-    similarity_score: float = 0.0
-    keyword_score: float = 0.0
-    combined_score: float = 0.0
+    score: float = 0.0
     highlights: Dict[str, List[str]] = None
 
 
@@ -51,13 +36,11 @@ class SearchResult:
 class RetrievalResult:
     query: str
     answer: str
-    confidence: float
     citations: List[Dict[str, Any]]
     sources_used: List[str]
     processing_time: float
     query_intent: str
     warnings: List[str]
-    followup_questions: List[str]
     search_results: List[SearchResult]
 
 
@@ -119,30 +102,22 @@ class RetrievalService:
             
             # Step 14: LLM Answer Generation
             self.logger.info("Step 14: Generating answer with LLM...")
-            answer, confidence, citations = await self._generate_answer(
+            answer, citations = await self._generate_answer(
                 processed_query, search_results
             )
             
             # Step 15: Response Formatting
             self.logger.info("Step 15: Formatting response...")
-            followup_questions = []
-            if self.config.generate_followup_questions:
-                followup_questions = await self._generate_followup_questions(
-                    processed_query, answer
-                )
-            
             processing_time = (datetime.now() - start_time).total_seconds()
             
             return RetrievalResult(
                 query=query,
                 answer=answer,
-                confidence=confidence,
                 citations=citations,
                 sources_used=list(set(r.metadata.get('document_id', '') for r in search_results)),
                 processing_time=processing_time,
                 query_intent=processed_query.intent.value,
                 warnings=warnings,
-                followup_questions=followup_questions,
                 search_results=search_results[:self.config.max_context_chunks]
             )
             
@@ -153,13 +128,11 @@ class RetrievalService:
             return RetrievalResult(
                 query=query,
                 answer=f"I encountered an error while processing your question: {str(e)}",
-                confidence=0.0,
                 citations=[],
                 sources_used=[],
                 processing_time=processing_time,
                 query_intent="error",
                 warnings=[f"Error: {str(e)}"],
-                followup_questions=[],
                 search_results=[]
             )
     
@@ -208,8 +181,7 @@ class RetrievalService:
                     id=result.get("id", ""),
                     content=result.get("content", ""),
                     metadata=result.get("metadata", {}),
-                    similarity_score=result.get("similarity", 0.0),
-                    keyword_score=0.0
+                    score=result.get("similarity", 0.0)
                 )
                 search_results.append(search_result)
             
@@ -219,40 +191,32 @@ class RetrievalService:
             for search_result in search_results:
                 if search_result.id in keyword_dict:
                     keyword_result = keyword_dict[search_result.id]
-                    search_result.keyword_score = keyword_result.get("score", 0.0)
+                    keyword_score = keyword_result.get("score", 0.0)
                     search_result.highlights = keyword_result.get("highlights", {})
-                    # Remove from keyword dict to avoid duplicates
+                    # Combine scores with weights
+                    normalized_vector = min(1.0, search_result.score)
+                    normalized_keyword = min(1.0, keyword_score / 10.0) if keyword_score > 0 else 0.0
+                    search_result.score = (
+                        normalized_vector * self.config.vector_weight +
+                        normalized_keyword * self.config.keyword_weight
+                    )
                     del keyword_dict[search_result.id]
             
             # Add remaining keyword-only results
             for keyword_result in keyword_dict.values():
+                keyword_score = keyword_result.get("score", 0.0)
+                normalized_keyword = min(1.0, keyword_score / 10.0) if keyword_score > 0 else 0.0
                 search_result = SearchResult(
                     id=keyword_result.get("id", ""),
                     content=keyword_result.get("content", ""),
                     metadata=keyword_result.get("metadata", {}),
-                    similarity_score=0.0,
-                    keyword_score=keyword_result.get("score", 0.0),
+                    score=normalized_keyword * self.config.keyword_weight,
                     highlights=keyword_result.get("highlights", {})
                 )
                 search_results.append(search_result)
             
-            # Calculate combined scores and rank
-            for result in search_results:
-                # Normalize scores (simple min-max normalization)
-                normalized_vector = min(1.0, result.similarity_score)
-                normalized_keyword = min(1.0, result.keyword_score / 10.0) if result.keyword_score > 0 else 0.0
-                
-                result.combined_score = (
-                    normalized_vector * self.config.vector_weight +
-                    normalized_keyword * self.config.keyword_weight
-                )
-            
             # Sort by combined score
-            search_results.sort(key=lambda x: x.combined_score, reverse=True)
-            
-            # Apply reranking if enabled
-            if self.config.enable_reranking:
-                search_results = self._reciprocal_rank_fusion(search_results)
+            search_results.sort(key=lambda x: x.score, reverse=True)
             
             self.logger.info(f"Hybrid search returned {len(search_results)} results")
             return search_results[:self.config.max_context_chunks]
@@ -261,37 +225,10 @@ class RetrievalService:
             self.logger.error(f"Hybrid search failed: {str(e)}")
             return []
     
-    def _reciprocal_rank_fusion(self, results: List[SearchResult]) -> List[SearchResult]:
-        """Apply reciprocal rank fusion for better ranking"""
-        k = 60  # RRF parameter
-        
-        # Create separate rankings for vector and keyword scores
-        vector_ranked = sorted(results, key=lambda x: x.similarity_score, reverse=True)
-        keyword_ranked = sorted(results, key=lambda x: x.keyword_score, reverse=True)
-        
-        # Calculate RRF scores
-        rrf_scores = {}
-        
-        for rank, result in enumerate(vector_ranked, 1):
-            if result.id not in rrf_scores:
-                rrf_scores[result.id] = 0
-            rrf_scores[result.id] += 1 / (k + rank)
-        
-        for rank, result in enumerate(keyword_ranked, 1):
-            if result.id not in rrf_scores:
-                rrf_scores[result.id] = 0
-            rrf_scores[result.id] += 1 / (k + rank)
-        
-        # Update combined scores with RRF
-        for result in results:
-            result.combined_score = rrf_scores.get(result.id, 0)
-        
-        # Re-sort by RRF score
-        return sorted(results, key=lambda x: x.combined_score, reverse=True)
     
     async def _generate_answer(self, 
                              processed_query: ProcessedQuery, 
-                             search_results: List[SearchResult]) -> tuple[str, float, List[Dict[str, Any]]]:
+                             search_results: List[SearchResult]) -> tuple[str, List[Dict[str, Any]]]:
         """
         Generate answer using LLM with retrieved context.
         
@@ -308,7 +245,7 @@ class RetrievalService:
                     "id": result.id,
                     "content": result.content[:200] + "..." if len(result.content) > 200 else result.content,
                     "metadata": result.metadata,
-                    "score": result.combined_score,
+                    "score": result.score,
                     "citation_number": i
                 })
             
@@ -333,14 +270,11 @@ class RetrievalService:
             
             answer = response.choices[0].message.content
             
-            # Calculate confidence based on context quality and LLM response
-            confidence = self._calculate_answer_confidence(processed_query, search_results, answer)
-            
-            return answer, confidence, citations
+            return answer, citations
             
         except Exception as e:
             self.logger.error(f"Answer generation failed: {str(e)}")
-            return f"I apologize, but I encountered an error generating an answer: {str(e)}", 0.0, []
+            return f"I apologize, but I encountered an error generating an answer: {str(e)}", []
     
     def _create_answer_prompt(self, processed_query: ProcessedQuery, context: str) -> str:
         """Create a tailored prompt for answer generation"""
@@ -379,71 +313,7 @@ Answer:"""
         
         return base_prompt + intent_specific.get(intent.value, " Provide comprehensive, well-cited answers.")
     
-    def _calculate_answer_confidence(self, 
-                                   processed_query: ProcessedQuery, 
-                                   search_results: List[SearchResult], 
-                                   answer: str) -> float:
-        """Calculate confidence score for the generated answer"""
-        confidence = 0.5  # Base confidence
-        
-        # Boost based on query processing confidence
-        confidence += processed_query.metadata.get('confidence', 0.5) * 0.2
-        
-        # Boost based on search result quality
-        if search_results:
-            avg_score = sum(r.combined_score for r in search_results) / len(search_results)
-            confidence += min(0.3, avg_score)
-        
-        # Boost based on answer characteristics
-        if "[" in answer and "]" in answer:  # Has citations
-            confidence += 0.1
-        
-        if len(answer) > 100:  # Substantial answer
-            confidence += 0.1
-        
-        if "I don't have enough information" not in answer.lower():
-            confidence += 0.1
-        
-        return min(1.0, confidence)
     
-    async def _generate_followup_questions(self, 
-                                         processed_query: ProcessedQuery, 
-                                         answer: str) -> List[str]:
-        """Generate relevant followup questions"""
-        try:
-            followup_prompt = f"""Based on this legal question and answer, suggest 3 relevant followup questions a user might want to ask.
-
-Original Question: {processed_query.original_query}
-Answer: {answer[:500]}...
-
-Generate 3 specific, actionable followup questions that would help the user understand related aspects of their legal document:
-
-1."""
-            
-            response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self.openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": followup_prompt}],
-                    max_tokens=150,
-                    temperature=0.3
-                )
-            )
-            
-            followup_text = response.choices[0].message.content
-            # Parse the numbered questions
-            questions = []
-            for line in followup_text.split('\n'):
-                if line.strip() and any(line.strip().startswith(f"{i}.") for i in range(1, 10)):
-                    question = line.split('.', 1)[1].strip()
-                    if question:
-                        questions.append(question)
-            
-            return questions[:3]
-            
-        except Exception as e:
-            self.logger.error(f"Followup generation failed: {str(e)}")
-            return []
     
     def _create_empty_result(self, 
                            query: str, 
@@ -456,13 +326,11 @@ Generate 3 specific, actionable followup questions that would help the user unde
         return RetrievalResult(
             query=query,
             answer="I couldn't find relevant information in the available documents to answer your question. Please try rephrasing your question or ensure the relevant documents have been uploaded and processed.",
-            confidence=0.0,
             citations=[],
             sources_used=[],
             processing_time=processing_time,
             query_intent=processed_query.intent.value,
             warnings=warnings,
-            followup_questions=[],
             search_results=[]
         )
     
@@ -476,91 +344,10 @@ Generate 3 specific, actionable followup questions that would help the user unde
         processed_query = self.query_processor.process_query(query)
         return await self._hybrid_search(processed_query, document_ids)
     
-    async def get_similar_content(self, 
-                                content: str, 
-                                document_ids: Optional[List[str]] = None,
-                                max_results: int = 10) -> List[SearchResult]:
-        """
-        Find content similar to the provided text.
-        """
-        try:
-            embedding = await self.embedding_service.embed_query(content)
-            
-            filters = {}
-            if document_ids:
-                filters["document_id"] = {"$in": document_ids}
-            
-            results = await self.vector_service.search_similar(
-                query_embedding=embedding,
-                n_results=max_results,
-                filters=filters
-            )
-            
-            search_results = []
-            for result in results:
-                search_results.append(SearchResult(
-                    id=result.get("id", ""),
-                    content=result.get("content", ""),
-                    metadata=result.get("metadata", {}),
-                    similarity_score=result.get("similarity", 0.0),
-                    combined_score=result.get("similarity", 0.0)
-                ))
-            
-            return search_results
-            
-        except Exception as e:
-            self.logger.error(f"Similar content search failed: {str(e)}")
-            return []
     
-    async def batch_retrieve(self, 
-                           queries: List[str], 
-                           document_ids: Optional[List[str]] = None) -> List[RetrievalResult]:
-        """
-        Process multiple queries efficiently.
-        """
-        tasks = [self.retrieve_answer(query, document_ids) for query in queries]
-        return await asyncio.gather(*tasks, return_exceptions=True)
     
     def update_config(self, config: RetrievalConfig):
         """Update retrieval configuration"""
         self.config = config
         self.logger.info("Retrieval configuration updated")
     
-    async def health_check(self) -> Dict[str, Any]:
-        """Check health of all retrieval components"""
-        health = {
-            "retrieval_service": True,
-            "vector_storage": False,
-            "elasticsearch": False,
-            "openai": False
-        }
-        
-        try:
-            # Check vector storage
-            stats = await self.vector_storage.get_collection_stats()
-            health["vector_storage"] = bool(stats)
-        except:
-            pass
-        
-        try:
-            # Check Elasticsearch
-            es_health = await self.elasticsearch_service.health_check()
-            health["elasticsearch"] = es_health
-        except:
-            pass
-        
-        try:
-            # Check OpenAI
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self.openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": "test"}],
-                    max_tokens=1
-                )
-            )
-            health["openai"] = True
-        except:
-            pass
-        
-        return health
