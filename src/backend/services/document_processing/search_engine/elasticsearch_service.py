@@ -124,6 +124,7 @@ class ElasticsearchService:
                    query: str, 
                    size: int = 10,
                    document_id: Optional[str] = None,
+                   document_ids: Optional[List[str]] = None,
                    filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Search text asynchronously"""
         # Ensure index exists before searching
@@ -143,15 +144,26 @@ class ElasticsearchService:
             }
         }
         
+        # Handle document filtering
+        filter_clauses = []
+        
         if document_id:
-            search_body["query"]["bool"]["filter"] = [
-                {"term": {"document_id": document_id}}
-            ]
+            filter_clauses.append({"term": {"document_id": document_id}})
+        elif document_ids:
+            filter_clauses.append({"terms": {"document_id": document_ids}})
         
         if filters:
-            filter_clauses = search_body["query"]["bool"].get("filter", [])
             for key, value in filters.items():
-                filter_clauses.append({"term": {key: value}})
+                if key == "document_id":
+                    # Handle multiple document IDs from filters
+                    if isinstance(value, dict) and "$in" in value:
+                        filter_clauses.append({"terms": {key: value["$in"]}})
+                    else:
+                        filter_clauses.append({"term": {key: value}})
+                else:
+                    filter_clauses.append({"term": {key: value}})
+        
+        if filter_clauses:
             search_body["query"]["bool"]["filter"] = filter_clauses
         
         try:

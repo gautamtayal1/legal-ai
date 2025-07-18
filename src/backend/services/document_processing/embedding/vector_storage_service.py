@@ -110,7 +110,18 @@ class VectorStorageService:
             if document_id:
                 where_filter["document_id"] = document_id
             if filters:
-                where_filter.update(filters)
+                # Handle multiple document IDs filter
+                if "document_id" in filters:
+                    doc_filter = filters["document_id"]
+                    if isinstance(doc_filter, dict) and "$in" in doc_filter:
+                        # ChromaDB uses different syntax for multiple values
+                        where_filter["document_id"] = {"$in": doc_filter["$in"]}
+                    else:
+                        where_filter["document_id"] = doc_filter
+                # Add other filters
+                for key, value in filters.items():
+                    if key != "document_id":
+                        where_filter[key] = value
             
             # Use LangChain's similarity search by vector
             docs_with_scores = self.vectorstore.similarity_search_by_vector_with_relevance_scores(

@@ -197,6 +197,7 @@ async def ask_question(
             )
         
         doc_ids = [str(doc.id) for doc in documents]
+        logger.info(f"Found {len(documents)} ready documents for thread {thread_id}: {doc_ids}")
         
         # Store assistant response for saving to DB
         assistant_response = ""
@@ -209,6 +210,7 @@ async def ask_question(
                 
                 # Get search results
                 search_results = await retrieval_service._hybrid_search(processed_query, doc_ids)
+                logger.info(f"Retrieved {len(search_results)} search results for query: {query}")
                 
                 # Stream the answer generation - plain text for streamProtocol: 'text'
                 async for chunk in retrieval_service._generate_answer(processed_query, search_results):

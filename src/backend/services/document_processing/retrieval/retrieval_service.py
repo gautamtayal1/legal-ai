@@ -176,9 +176,13 @@ class RetrievalService:
                 processed_query.processed_query
             )
             
+            # Always apply filters when document_ids are provided
             filters = None
-            if document_ids and len(document_ids) == 1:
-                filters = {"document_id": document_ids[0]}
+            if document_ids:
+                if len(document_ids) == 1:
+                    filters = {"document_id": document_ids[0]}
+                else:
+                    filters = {"document_id": {"$in": document_ids}}
             
             vector_results, keyword_results = await asyncio.gather(
                 self.vector_service.search_similar(
@@ -189,21 +193,14 @@ class RetrievalService:
                 self.elasticsearch_service.search_text(
                     query=processed_query.processed_query,
                     size=self.config.max_search_results,
-                    document_id=document_ids[0] if document_ids and len(document_ids) == 1 else None,
-                    filters=filters if not document_ids else None
+                    document_ids=document_ids
                 )
             )
             
             search_results = []
             
-            # Process vector results and filter by document_ids if needed
+            # Process vector results (filtering already done at search level)
             for result in vector_results:
-                # If we have multiple document IDs, filter here
-                if document_ids and len(document_ids) > 1:
-                    result_doc_id = result.get("metadata", {}).get("document_id")
-                    if result_doc_id not in document_ids:
-                        continue
-                
                 search_result = SearchResult(
                     id=result.get("id", ""),
                     content=result.get("content", ""),
@@ -227,13 +224,8 @@ class RetrievalService:
                     )
                     del keyword_dict[search_result.id]
             
+            # Process remaining keyword results (filtering already done at search level)
             for keyword_result in keyword_dict.values():
-                # Filter by document_ids if needed
-                if document_ids and len(document_ids) > 1:
-                    result_doc_id = keyword_result.get("metadata", {}).get("document_id")
-                    if result_doc_id not in document_ids:
-                        continue
-                
                 keyword_score = keyword_result.get("score", 0.0)
                 normalized_keyword = min(1.0, keyword_score / 10.0) if keyword_score > 0 else 0.0
                 search_result = SearchResult(
@@ -247,7 +239,7 @@ class RetrievalService:
             
             search_results.sort(key=lambda x: x.score, reverse=True)
             
-            self.logger.info(f"Hybrid search returned {len(search_results)} results")
+            self.logger.info(f"Hybrid search returned {len(search_results)} results for document_ids: {document_ids}")
             return search_results[:self.config.max_context_chunks]
             
         except Exception as e:
