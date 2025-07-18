@@ -117,3 +117,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-ibm-plex-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Custom styles for message formatting */
+strong {
+  color: #f3f4f6 !important; /* gray-100 */
+  font-weight: 600;
+}

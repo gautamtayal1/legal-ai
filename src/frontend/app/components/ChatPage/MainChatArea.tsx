@@ -23,8 +23,8 @@ export default function MainChatArea() {
                 }`}>
                   <div className={`p-4 rounded-2xl ${
                     message.role === 'user' 
-                      ? 'bg-input-area text-white max-w-[70%] text-lg' 
-                      : 'text-white max-w-full text-lg'
+                      ? 'bg-input-area text-gray-100 max-w-[70%] text-[17px]' 
+                      : 'text-gray-100 max-w-full text-[17px]'
                   }`}>
                     <MessageFormatter content={message.content} role={message.role as 'user' | 'assistant'} />
                   </div>

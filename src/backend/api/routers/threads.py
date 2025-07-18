@@ -18,6 +18,13 @@ class ThreadCreate(BaseModel):
     user_id: str
     title: str
 
+class ThreadUpdate(BaseModel):
+    title: str
+
+class ThreadAutoName(BaseModel):
+    thread_id: str
+    user_id: str
+
 @router.get("")
 async def list_threads(db: Session = Depends(get_db)):
     """Get all threads from the database."""

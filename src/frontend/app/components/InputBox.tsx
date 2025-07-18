@@ -29,7 +29,7 @@ const InputBox: React.FC<InputBoxProps> = ({ input, handleInputChange, handleSub
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               placeholder="Ask your document..." 
-              className="flex-1 p-2 rounded-lg bg-input-area text-white placeholder-white/70 focus:outline-none"
+              className="flex-1 p-2 rounded-lg bg-input-area text-gray-100 placeholder-gray-300 focus:outline-none text-[17px]"
               disabled={isLoading}
             />
             
