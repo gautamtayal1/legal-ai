@@ -159,7 +159,9 @@ class RetrievalService:
             for chunk in response:
                 delta = chunk.choices[0].delta.content
                 if delta:
+                    # Add flush to ensure immediate streaming
                     yield delta
+                    await asyncio.sleep(0)  # Allow other tasks to run
             
         except Exception as e:
             self.logger.error(f"Answer generation failed: {str(e)}")

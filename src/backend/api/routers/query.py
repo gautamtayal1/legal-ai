@@ -175,9 +175,12 @@ async def ask_question(
                 # Get search results
                 search_results = await retrieval_service._hybrid_search(processed_query, doc_ids)
                 
-                # Stream the answer generation
+                # Stream the answer generation - plain text for streamProtocol: 'text'
                 async for chunk in retrieval_service._generate_answer(processed_query, search_results):
-                    yield chunk
+                    if chunk:
+                        yield chunk
+                        # Ensure immediate streaming
+                        await asyncio.sleep(0)
                     
             except Exception as e:
                 logger.error(f"Streaming failed: {str(e)}")
@@ -187,10 +190,13 @@ async def ask_question(
         
         return StreamingResponse(
             generate_stream(),
-            media_type="text/plain",
+            media_type="text/plain; charset=utf-8",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
             }
         )
         

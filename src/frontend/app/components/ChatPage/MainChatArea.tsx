@@ -21,8 +21,17 @@ export default function MainChatArea() {
       <div className="w-full h-screen bg-chat-area relative">
         <div className="flex-1 overflow-y-auto">
           {messages.map((message) => (
-            <div key={message.id}>
-              {message.content}
+            <div key={message.id} className={`mb-4 p-4 rounded-lg ${
+              message.role === 'user' 
+                ? 'bg-blue-600 text-white ml-auto max-w-xs' 
+                : 'bg-gray-700 text-white mr-auto max-w-2xl'
+            }`}>
+              <div className="text-sm font-medium mb-1">
+                {message.role === 'user' ? 'You' : 'Assistant'}
+              </div>
+              <div className="whitespace-pre-wrap">
+                {message.content}
+              </div>
             </div>
           ))}
         </div>
