@@ -3,19 +3,21 @@
 import React from 'react'
 import { ArrowUp } from 'lucide-react'
 import { useState } from 'react';
+import axios from 'axios';
 
 const InputBox = () => {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (message.trim() === '') return;
     
     setIsSending(true);
-    // TODO: Implement send message logic
+
     console.log('Sending message:', message);
-    
-    // Reset message
+    const response = await axios.post('/api/query', { query: message });
+    console.log('Response:', response);
+
     setMessage('');
     setIsSending(false);
   };
