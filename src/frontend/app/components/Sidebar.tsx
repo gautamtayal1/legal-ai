@@ -6,7 +6,7 @@ import { useState, useEffect, createContext, useContext } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
 import axios from 'axios'
-import { Plus, Menu} from 'lucide-react'
+import { Plus, Menu, Edit3, Trash2, Check, X } from 'lucide-react'
 
 interface Thread {
   id: string;
@@ -20,6 +20,13 @@ interface SidebarContextType {
   toggleSidebar: () => void;
   threads: Thread[];
   setThreads: (threads: Thread[]) => void;
+  editingThreadId: string | null;
+  editingTitle: string;
+  setEditingTitle: (title: string) => void;
+  startEditing: (threadId: string, currentTitle: string) => void;
+  cancelEditing: () => void;
+  saveEdit: (threadId: string) => void;
+  deleteThread: (threadId: string) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -35,10 +42,67 @@ export const useSidebar = () => {
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(true);
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string>('');
   const { user } = useUser();
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
+  };
+
+  const startEditing = (threadId: string, currentTitle: string) => {
+    setEditingThreadId(threadId);
+    setEditingTitle(currentTitle);
+  };
+
+  const cancelEditing = () => {
+    setEditingThreadId(null);
+    setEditingTitle('');
+  };
+
+  const saveEdit = async (threadId: string) => {
+    if (!user?.id || !editingTitle.trim()) return;
+    
+    try {
+      await axios.put(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/threads/${threadId}?user_id=${user.id}`,
+        { title: editingTitle.trim() }
+      );
+      
+      // Update local state
+      setThreads(threads.map(thread => 
+        thread.id === threadId 
+          ? { ...thread, title: editingTitle.trim() }
+          : thread
+      ));
+      
+      cancelEditing();
+    } catch (error) {
+      console.error('Failed to update thread:', error);
+    }
+  };
+
+  const deleteThread = async (threadId: string) => {
+    if (!user?.id) return;
+    
+    const confirmed = confirm('Are you sure you want to delete this chat? This action cannot be undone.');
+    if (!confirmed) return;
+    
+    try {
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/threads/${threadId}?user_id=${user.id}`
+      );
+      
+      // Update local state
+      setThreads(threads.filter(thread => thread.id !== threadId));
+      
+      // If we're currently viewing the deleted thread, redirect to home
+      if (window.location.pathname.includes(threadId)) {
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Failed to delete thread:', error);
+    }
   };
 
   useEffect(() => {
@@ -58,7 +122,19 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   return (
-    <SidebarContext.Provider value={{ isOpen, toggleSidebar, threads, setThreads }}>
+    <SidebarContext.Provider value={{ 
+      isOpen, 
+      toggleSidebar, 
+      threads, 
+      setThreads, 
+      editingThreadId, 
+      editingTitle, 
+      setEditingTitle,
+      startEditing, 
+      cancelEditing, 
+      saveEdit, 
+      deleteThread 
+    }}>
       {children}
     </SidebarContext.Provider>
   );
@@ -68,7 +144,18 @@ export default function Sidebar() {
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
-  const { isOpen, toggleSidebar, threads } = useSidebar();
+  const { 
+    isOpen, 
+    toggleSidebar, 
+    threads, 
+    editingThreadId, 
+    editingTitle, 
+    setEditingTitle, 
+    startEditing, 
+    cancelEditing, 
+    saveEdit, 
+    deleteThread 
+  } = useSidebar();
 
   const handleNewChat = () => {
     router.push('/');
@@ -144,25 +231,82 @@ export default function Sidebar() {
           
           <div className="space-y-1">
             {threads.map((thread) => (
-              <button
+              <div
                 key={thread.id}
-                onClick={() => handleThreadClick(thread.id)}
-                className={`w-full text-left p-2.5 rounded-4xl transition-colors hover:bg-white/10 group ${
+                className={`w-full rounded-4xl transition-colors hover:bg-white/10 group ${
                   currentThreadId === thread.id ? 'bg-white/10' : ''
                 }`}
               >
-                <div className="flex items-start gap-2">
-                  <div className={`mt-1 ${currentThreadId === thread.id ? 'text-button' : 'text-white/40 group-hover:text-white/60'}`}>
-                  </div>
+                <div className="flex items-center gap-2 p-2.5">
                   <div className="flex-1 min-w-0">
-                    <div className={`text-sm font-medium truncate ${
-                      currentThreadId === thread.id ? 'text-white' : 'text-white/80 group-hover:text-white'
-                    }`}>
-                      {thread.title || 'New Chat'}
-                    </div>
+                    {editingThreadId === thread.id ? (
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveEdit(thread.id);
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            cancelEditing();
+                          }
+                        }}
+                        className="w-full bg-white/10 text-white text-sm px-2 py-1 rounded focus:outline-none focus:bg-white/20"
+                        autoFocus
+                      />
+                    ) : (
+                      <div
+                        onClick={() => handleThreadClick(thread.id)}
+                        className={`text-sm font-medium truncate cursor-pointer ${
+                          currentThreadId === thread.id ? 'text-white' : 'text-white/80 group-hover:text-white'
+                        }`}
+                      >
+                        {thread.title || 'New Chat'}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity thread-actions">
+                    {editingThreadId === thread.id ? (
+                      <>
+                        <button
+                          onClick={() => saveEdit(thread.id)}
+                          className="p-1 hover:bg-white/20 rounded text-green-400 hover:text-green-300"
+                          aria-label="Save"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          onClick={cancelEditing}
+                          className="p-1 hover:bg-white/20 rounded text-red-400 hover:text-red-300"
+                          aria-label="Cancel"
+                        >
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => startEditing(thread.id, thread.title || 'New Chat')}
+                          className="p-1 hover:bg-white/20 rounded text-white/60 hover:text-white/80"
+                          aria-label="Edit"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          onClick={() => deleteThread(thread.id)}
+                          className="p-1 hover:bg-white/20 rounded text-red-400 hover:text-red-300"
+                          aria-label="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         </div>

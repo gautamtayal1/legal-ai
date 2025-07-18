@@ -4,7 +4,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import axios from 'axios';
-import Sidebar, { MainContent } from "@/components/Sidebar";
+import Sidebar, { MainContent, useSidebar } from "@/components/Sidebar";
 import MainChatArea from "@/app/components/ChatPage/MainChatArea";
 import DocumentProcessing from "@/app/components/DocumentProcessing";
 
@@ -31,10 +31,12 @@ export default function ChatPage() {
   const router = useRouter();
   const threadId = params.id as string;
   const { user } = useUser();
+  const { setThreads } = useSidebar();
   const isUploading = searchParams.get('uploading') === 'true';
   
   const [documents, setDocuments] = useState<DocumentStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [hasAutoNamed, setHasAutoNamed] = useState(false);
 
   const mapDbStatusToUi = (dbStatus: string): string => {
     switch (dbStatus) {
@@ -180,6 +182,11 @@ export default function ChatPage() {
             clearInterval(pollInterval);
             pollInterval = null;
             console.log('All documents are ready, stopped polling');
+            
+            // Auto-name the thread if not already done
+            if (!hasAutoNamed) {
+              autoNameThread();
+            }
           }
           
           // Remove uploading parameter from URL when documents are ready
@@ -187,7 +194,7 @@ export default function ChatPage() {
             router.replace(`/chat/${threadId}`);
           }
         }
-      } catch (err) {
+      } catch (error) {
         if (isMounted) {
           setError('Failed to fetch documents for this thread');
           setDocuments([]); // Clear on error
@@ -209,7 +216,30 @@ export default function ChatPage() {
         clearInterval(pollInterval);
       }
     };
-  }, [threadId, user?.id]);
+  }, [threadId, user?.id, hasAutoNamed]);
+  
+  const autoNameThread = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/threads/${threadId}/auto-name?user_id=${user.id}`
+      );
+      
+      if (response.data.new_name) {
+        // Update the sidebar threads with the new name
+        const threadsResponse = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/threads/${user.id}`
+        );
+        setThreads(threadsResponse.data);
+        setHasAutoNamed(true);
+        console.log('Thread auto-named:', response.data.new_name);
+      }
+    } catch (error) {
+      console.error('Failed to auto-name thread:', error);
+      setHasAutoNamed(true); // Prevent retries
+    }
+  };
 
   // Show error state
   if (error) {
@@ -255,7 +285,7 @@ export default function ChatPage() {
         <Sidebar />
         <MainContent>
           <DocumentProcessing 
-            documentId={combinedStatus?.id || ''}
+            documentId={combinedStatus?.id ? String(combinedStatus.id) : ''}
             status={combinedStatus}
             onComplete={() => {
             }}

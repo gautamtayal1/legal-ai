@@ -123,3 +123,17 @@ strong {
   color: #f3f4f6 !important; /* gray-100 */
   font-weight: 600;
 }
+
+/* Thread action buttons */
+.thread-actions {
+  transition: all 0.2s ease;
+}
+
+.thread-actions button {
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.thread-actions button:hover {
+  transform: scale(1.05);
+}
