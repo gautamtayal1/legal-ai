@@ -19,7 +19,7 @@ const InputBox: React.FC<InputBoxProps> = ({ input, handleInputChange, handleSub
   };
 
   return (
-    <div className="w-full flex justify-center px-4">
+    <div className="w-full flex justify-center px-4 pb-6">
       <div className="w-full max-w-[90%] sm:max-w-[600px] md:max-w-[600px] lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1000px]">
         <div className="bg-input-area rounded-2xl border border-white/5 p-3">
           <form onSubmit={handleSubmit} className="flex items-center gap-3">

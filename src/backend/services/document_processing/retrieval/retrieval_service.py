@@ -267,7 +267,7 @@ Legal Context:
 Instructions:
 1. Answer based ONLY on the provided context
 2. If the context doesn't contain enough information, say so clearly
-3. For legal queries, be precise and cite specific sections when possible
+3. For legal queries, be precise and provide clear explanations
 4. If there are conflicting information, mention the discrepancy
 5. Keep the answer concise but complete
 
@@ -278,7 +278,7 @@ Answer:"""
         base_prompt = """You are Inquire, a legal AI assistant helping users understand legal documents. You provide accurate answers based on the provided document context."""
         
         intent_specific = {
-            "definition": " Focus on providing clear definitions with exact references to where terms are defined in the documents.",
+            "definition": " Focus on providing clear definitions and explanations of terms.",
             "obligation": " Focus on identifying who must do what, under what conditions, and by when. Be very specific about obligations and responsibilities.",
             "timeline": " Focus on deadlines, time periods, and temporal requirements. Be precise about dates and timeframes.",
             "party": " Focus on identifying the parties involved and their roles in the agreement.",
@@ -287,7 +287,7 @@ Answer:"""
             "liability": " Focus on liability provisions, indemnification, and risk allocation between parties."
         }
         
-        return base_prompt + intent_specific.get(intent.value, " Provide comprehensive, well-cited answers.")
+        return base_prompt + intent_specific.get(intent.value, " Provide comprehensive, clear answers.")
     
     
     
