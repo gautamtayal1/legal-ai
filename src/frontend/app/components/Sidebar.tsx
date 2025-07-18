@@ -69,12 +69,16 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         { title: editingTitle.trim() }
       );
       
-      // Update local state
-      setThreads(threads.map(thread => 
+      // Update local state and maintain sort order
+      const updatedThreads = threads.map(thread => 
         thread.id === threadId 
-          ? { ...thread, title: editingTitle.trim() }
+          ? { ...thread, title: editingTitle.trim(), updated_at: new Date().toISOString() }
           : thread
-      ));
+      );
+      const sortedThreads = updatedThreads.sort((a: Thread, b: Thread) => 
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+      setThreads(sortedThreads);
       
       cancelEditing();
     } catch (error) {
@@ -111,7 +115,10 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       
       try {
         const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/threads/${user.id}`);
-        setThreads(response.data);
+        const sortedThreads = response.data.sort((a: Thread, b: Thread) => 
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        );
+        setThreads(sortedThreads);
       } catch (error) {
         console.error('Failed to fetch threads:', error);
         setThreads([]);

@@ -1,4 +1,63 @@
 services:
+  # Nginx Reverse Proxy
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost/api
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Backend Service
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-inquire_user}:${POSTGRES_PASSWORD:-inquire_pass}@postgres:5432/${POSTGRES_DB:-inquire_db}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - app-network
+    restart: unless-stopped
+
   postgres:
     image: postgres:15
     environment:
@@ -9,6 +68,8 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
     healthcheck:
       test:
         [
@@ -35,6 +96,8 @@ services:
       - "${ELASTICSEARCH_TRANSPORT_PORT:-9300}:9300"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - app-network
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
@@ -52,6 +115,8 @@ services:
       - "${CHROMADB_PORT:-8080}:8000"
     volumes:
       - chromadb_data:/chroma/chroma
+    networks:
+      - app-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
       interval: 30s
@@ -65,6 +130,12 @@ services:
       - "${ADMINER_PORT:-8081}:8080"
     depends_on:
       - postgres
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:
