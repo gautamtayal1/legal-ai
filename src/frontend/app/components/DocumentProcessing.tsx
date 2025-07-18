@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { FileText, Check, Loader2, Zap, Database, Brain } from 'lucide-react';
+import { Brain } from 'lucide-react';
 
 interface DocumentProcessingProps {
   documentId: number;
@@ -19,115 +19,100 @@ interface ProcessingStatus {
   is_ready: boolean;
 }
 
-const DocumentProcessing = ({ documentId, status, onComplete }: DocumentProcessingProps) => {
-  const steps = [
-    { key: 'uploading', icon: FileText, label: "Upload" },
-    { key: 'processing', icon: Zap, label: "Extract" },
-    { key: 'chunking', icon: Database, label: "Chunk" },
-    { key: 'indexing', icon: Brain, label: "Embed" },
-    { key: 'ready', icon: Check, label: "Ready" }
-  ];
-
-  // If no status (no documents in DB yet), show uploading step
+const DocumentProcessing = ({ status }: DocumentProcessingProps) => {
   const currentStatus = status || {
     id: 0,
-    filename: 'Uploading documents...',
+    filename: 'Processing documents...',
     processing_status: 'uploading',
     processing_step: 'uploading',
     is_ready: false
   };
 
   return (
-    <div className="w-full h-screen bg-chat-area relative overflow-y-auto">
-      <div className="flex flex-col items-center justify-center min-h-full px-8 py-16">
-        <div className="w-full max-w-2xl">
-          
-          {/* Header */}
-          <div className="text-center mb-12">
-            <h2 className="text-white text-2xl font-light mb-3">Processing Documents</h2>
-            <p className="text-white/60">{currentStatus.filename || `Document ${documentId}`}</p>
-          </div>
-          
-          {/* Vertical Timeline */}
-          <div className="relative">
-            {steps.map((step, index) => {
-              // Check if this step is completed (current status is at this step or beyond)
-              const currentStepIndex = steps.findIndex(s => s.key === currentStatus.processing_status);
-              const isCompleted = currentStepIndex > index || (currentStepIndex === index && currentStatus.processing_status === 'ready');
-              const isActive = step.key === currentStatus.processing_status;
-              const isLastStep = index === steps.length - 1;
-              
-              return (
-                <div key={step.key} className="relative flex items-start mb-8 last:mb-0">
-                  
-                  {/* Connector Line */}
-                  {!isLastStep && (
-                    <div 
-                      className={`absolute left-6 top-12 w-0.5 h-8 transition-colors duration-500 ${
-                        isCompleted
-                          ? "bg-button" 
-                          : "bg-white/20"
-                      }`}
-                    />
-                  )}
-                  
-                  {/* Icon Circle */}
-                  <div 
-                    className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-500 ${
-                      isCompleted 
-                        ? "bg-button border-button text-black" 
-                        : isActive 
-                          ? "bg-chat-area border-button text-button animate-pulse" 
-                          : "bg-chat-area border-white/20 text-white/40"
-                    }`}
-                  >
-                    {isActive && !isCompleted ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <step.icon className="w-5 h-5" />
-                    )}
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="flex-1 h-full flex flex-col justify-start pt-2 ml-6">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 
-                        className={`font-medium transition-colors duration-300 ${
-                          isCompleted 
-                            ? "text-button" 
-                            : isActive 
-                              ? "text-white" 
-                              : "text-white/40"
-                        }`}
-                      >
-                        {step.label === "Upload" ? "Document Upload" :
-                         step.label === "Extract" ? "Text Extraction" :
-                         step.label === "Chunk" ? "Content Analysis" :
-                         step.label === "Embed" ? "Vector Processing" :
-                         "Ready for Chat"}
-                      </h3>
-                      {isCompleted && (
-                        <span className="text-button text-sm">✓</span>
-                      )}
-                    </div>
-                    
-                    <div className="h-6 flex items-start">
-                      {isActive && currentStatus.processing_step && (
-                        <p className="text-white/70 text-sm animate-pulse">
-                          {currentStatus.processing_step}
-                        </p>
-                      )}
-                      
-                      {isCompleted && !isActive && (
-                        <p className="text-white/50 text-sm">Complete</p>
-                      )}
-                    </div>
-                  </div>
+    <div className="w-full h-screen bg-chat-area relative flex flex-col overflow-hidden">
+      
+      <div className="flex-1 flex items-center justify-center relative z-10">
+        <div className="text-center">
+          {/* Quantum processing orb - enhanced */}
+          <div className="mb-12 relative">
+            <div className="w-48 h-48 mx-auto relative">
+              {/* Outer quantum ring with multiple layers */}
+              <div className="absolute inset-0 border-2 border-button/40 rounded-full animate-spin" style={{ animationDuration: '8s' }}>
+                <div className="w-4 h-4 bg-gradient-to-r from-button to-purple-400 rounded-full absolute -top-2 left-1/2 transform -translate-x-1/2 animate-pulse shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-r from-button to-purple-400 rounded-full animate-ping opacity-75"></div>
                 </div>
-              );
-            })}
+                <div className="w-4 h-4 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full absolute top-1/2 -right-2 transform -translate-y-1/2 animate-pulse shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-ping opacity-75"></div>
+                </div>
+                <div className="w-4 h-4 bg-gradient-to-r from-pink-400 to-button rounded-full absolute -bottom-2 left-1/2 transform -translate-x-1/2 animate-pulse shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-r from-pink-400 to-button rounded-full animate-ping opacity-75"></div>
+                </div>
+                <div className="w-4 h-4 bg-gradient-to-r from-button to-purple-400 rounded-full absolute top-1/2 -left-2 transform -translate-y-1/2 animate-pulse shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-r from-button to-purple-400 rounded-full animate-ping opacity-75"></div>
+                </div>
+              </div>
+              
+              {/* Secondary orbital ring */}
+              <div className="absolute inset-4 border border-purple-400/50 rounded-full animate-spin" style={{ animationDuration: '5s', animationDirection: 'reverse' }}>
+                <div className="w-3 h-3 bg-purple-400 rounded-full absolute -top-1.5 left-1/2 transform -translate-x-1/2 animate-bounce"></div>
+                <div className="w-3 h-3 bg-pink-400 rounded-full absolute -bottom-1.5 left-1/2 transform -translate-x-1/2 animate-bounce" style={{ animationDelay: '0.7s' }}></div>
+                <div className="w-3 h-3 bg-button rounded-full absolute top-1/2 -right-1.5 transform -translate-y-1/2 animate-bounce" style={{ animationDelay: '1.4s' }}></div>
+                <div className="w-3 h-3 bg-purple-400 rounded-full absolute top-1/2 -left-1.5 transform -translate-y-1/2 animate-bounce" style={{ animationDelay: '2.1s' }}></div>
+              </div>
+              
+              {/* Middle energy ring */}
+              <div className="absolute inset-8 border border-button/60 rounded-full animate-spin" style={{ animationDuration: '3s' }}>
+                <div className="w-2 h-2 bg-button rounded-full absolute -top-1 left-1/2 transform -translate-x-1/2 animate-bounce"></div>
+                <div className="w-2 h-2 bg-purple-400 rounded-full absolute -bottom-1 left-1/2 transform -translate-x-1/2 animate-bounce" style={{ animationDelay: '0.5s' }}></div>
+                <div className="w-2 h-2 bg-pink-400 rounded-full absolute top-1/2 -right-1 transform -translate-y-1/2 animate-bounce" style={{ animationDelay: '1s' }}></div>
+                <div className="w-2 h-2 bg-button rounded-full absolute top-1/2 -left-1 transform -translate-y-1/2 animate-bounce" style={{ animationDelay: '1.5s' }}></div>
+              </div>
+              
+              {/* Inner core with enhanced effects */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-24 h-24 bg-gradient-to-br from-button/40 via-purple-400/40 to-pink-400/40 rounded-full flex items-center justify-center animate-pulse shadow-2xl relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-button/20 via-purple-400/20 to-pink-400/20 rounded-full animate-ping"></div>
+                  <Brain className="w-12 h-12 text-button animate-pulse relative z-10" />
+                </div>
+              </div>
+              
+              {/* Enhanced energy waves */}
+              <div className="absolute inset-0 border border-button/30 rounded-full animate-ping"></div>
+              <div className="absolute inset-2 border border-purple-400/25 rounded-full animate-ping" style={{ animationDelay: '0.8s' }}></div>
+              <div className="absolute inset-4 border border-pink-400/20 rounded-full animate-ping" style={{ animationDelay: '1.6s' }}></div>
+              <div className="absolute inset-6 border border-button/15 rounded-full animate-ping" style={{ animationDelay: '2.4s' }}></div>
+            </div>
           </div>
           
+          {/* Holographic title with enhanced effects */}
+          <h2 className="text-white text-5xl font-light mb-8 relative">
+            <span className="relative z-10 bg-gradient-to-r from-button via-purple-400 to-pink-400 bg-clip-text text-transparent animate-pulse">
+              🧠AI Processing
+            </span>
+            <div className="absolute inset-0 text-button/30 blur-sm animate-pulse">🧠AI Processing</div>
+            <div className="absolute inset-0 text-purple-400/20 blur-lg animate-pulse">🧠AI Processing</div>
+            <div className="absolute inset-0 text-pink-400/10 blur-xl animate-pulse">🧠AI Processing</div>
+            
+            {/* Scanning line effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-button/30 to-transparent animate-pulse" style={{animationDuration: '3s'}}></div>
+          </h2>
+          
+          {/* Status with typewriter effect */}
+          <div className="mb-8 h-16 flex items-center justify-center">
+            <p className="text-white/80 text-lg font-mono">
+              {currentStatus.filename && currentStatus.filename !== 'Processing documents...' 
+                ? `Analyzing: ${currentStatus.filename}`
+                : 'Extracting knowledge patterns...'
+              }
+            </p>
+          </div>
+          
+          {/* Quantum progress */}
+          <div className="w-80 h-2 bg-black/30 rounded-full mx-auto mb-6 overflow-hidden border border-white/10">
+            <div className="h-full bg-gradient-to-r from-button via-purple-400 to-pink-400 rounded-full animate-pulse relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

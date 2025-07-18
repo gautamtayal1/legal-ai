@@ -36,13 +36,14 @@ export default function ChatPage() {
   const [documents, setDocuments] = useState<DocumentStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Status mapping from DB to UI
   const mapDbStatusToUi = (dbStatus: string): string => {
     switch (dbStatus) {
       case 'pending':
         return 'uploading';
       case 'uploaded':
+        return 'uploading';
       case 'extracting':
+        return 'processing';
       case 'processing':
         return 'processing';
       case 'chunking':
@@ -200,7 +201,7 @@ export default function ChatPage() {
     };
 
     fetchDocuments();
-    pollInterval = setInterval(fetchDocuments, 500);
+    pollInterval = setInterval(fetchDocuments, 200);
 
     return () => {
       isMounted = false;

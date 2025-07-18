@@ -6,7 +6,7 @@ import { useState, useEffect, createContext, useContext } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
 import axios from 'axios'
-import { MessageSquare, Plus, Menu, X } from 'lucide-react'
+import { Plus, Menu} from 'lucide-react'
 
 interface Thread {
   id: string;
@@ -76,20 +76,6 @@ export default function Sidebar() {
 
   const handleThreadClick = (threadId: string) => {
     router.push(`/chat/${threadId}`);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffInHours < 24 * 7) {
-      return date.toLocaleDateString([], { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
   };
 
   const getCurrentThreadId = () => {
