@@ -121,7 +121,7 @@ async def get_retrieval_service() -> RetrievalService:
     
     return _retrieval_service
 
-@router.post("/ask", response_model=QueryResponse)
+@router.post("", response_model=QueryResponse)
 async def ask_question(
     request: QueryRequest,
     db: Session = Depends(get_db),
@@ -129,14 +129,8 @@ async def ask_question(
 ):
     """
     Ask a natural language question about legal documents.
-    
-    This endpoint implements the complete retrieval pipeline:
-    - Step 12: Query preprocessing
-    - Step 13: Semantic + keyword search
-    - Step 14: LLM answer generation
     """
     try:
-        # Validate document IDs if provided
         if request.document_ids:
             doc_ids = [int(doc_id) for doc_id in request.document_ids]
             documents = db.query(Document).filter(
@@ -150,7 +144,6 @@ async def ask_question(
                     detail="Some documents not found or not ready for querying"
                 )
         
-        # Update retrieval config if needed
         if request.max_results != 20:
             config = RetrievalConfig(
                 max_search_results=request.max_results,
@@ -158,21 +151,17 @@ async def ask_question(
             )
             retrieval_service.update_config(config)
         
-        # Perform retrieval
         result = await retrieval_service.retrieve_answer(
             query=request.query,
             document_ids=request.document_ids
         )
         
-        # Convert SearchResult objects to dictionaries for response
         search_results_dict = _convert_search_results_to_dict(result.search_results)
         
-        # Convert to response model
         response = QueryResponse(
             query=result.query,
             answer=result.answer,
             confidence=result.confidence,
-            citations=result.citations,
             sources_used=result.sources_used,
             processing_time=result.processing_time,
             query_intent=result.query_intent,
@@ -205,7 +194,6 @@ async def search_documents(
         import time
         start_time = time.time()
         
-        # Validate document IDs if provided
         if request.document_ids:
             doc_ids = [int(doc_id) for doc_id in request.document_ids]
             documents = db.query(Document).filter(
@@ -219,19 +207,16 @@ async def search_documents(
                     detail="Some documents not found or not ready for searching"
                 )
         
-        # Perform search
         search_results = await retrieval_service.search_only(
             query=request.query,
             document_ids=request.document_ids
         )
         
-        # Apply max results limit
         if request.max_results and len(search_results) > request.max_results:
             search_results = search_results[:request.max_results]
         
         processing_time = time.time() - start_time
         
-        # Convert SearchResult objects to dictionaries
         results_dict = _convert_search_results_to_dict(search_results)
         
         response = SearchResponse(
@@ -261,7 +246,6 @@ async def find_similar_content(
     that are semantically similar to the input content.
     """
     try:
-        # Validate document IDs if provided
         if request.document_ids:
             doc_ids = [int(doc_id) for doc_id in request.document_ids]
             documents = db.query(Document).filter(

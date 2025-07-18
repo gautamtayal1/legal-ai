@@ -1,6 +1,4 @@
 """
-Query Processor - Step 12: Query Preprocessing
-
 Handles query analysis, intent detection, and query enhancement
 for optimal search performance.
 """
@@ -9,6 +7,17 @@ import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
+
+try:
+    import contractions
+    from nltk.corpus import stopwords
+    from nltk.tokenize import word_tokenize
+    import nltk
+    nltk.download('stopwords', quiet=True)
+    nltk.download('punkt', quiet=True)
+    NLTK_AVAILABLE = True
+except ImportError:
+    NLTK_AVAILABLE = False
 
 
 class QueryIntent(Enum):
@@ -20,7 +29,6 @@ class QueryIntent(Enum):
     TERMINATION = "termination"
     PAYMENT = "payment"
     LIABILITY = "liability"
-
 
 @dataclass
 class ProcessedQuery:
@@ -96,7 +104,6 @@ class QueryProcessor:
                 processed_query=processed_query,
                 intent=intent,
                 keywords=keywords,
-                metadata={}
             )
             
         except Exception as e:
@@ -106,38 +113,26 @@ class QueryProcessor:
                 processed_query=query,
                 intent=QueryIntent.GENERAL,
                 keywords=[],
-                metadata={'error': str(e)}
             )
     
     def _clean_query(self, query: str) -> str:
-        """Clean and normalize the query"""
-        # Convert to lowercase
-        query = query.lower().strip()
+        """Clean and normalize the query using proper libraries"""
+        query = query.strip()
         
-        # Remove extra whitespace
+        if 'contractions' in globals():
+            try:
+                query = contractions.fix(query)
+            except:
+                pass
+    
         query = re.sub(r'\s+', ' ', query)
         
-        # Normalize contractions
-        contractions = {
-            "what's": "what is",
-            "what're": "what are", 
-            "who's": "who is",
-            "how's": "how is",
-            "can't": "cannot",
-            "won't": "will not",
-            "shouldn't": "should not"
-        }
-        
-        for contraction, expansion in contractions.items():
-            query = query.replace(contraction, expansion)
-        
-        return query
+        return query.lower()
     
     def _detect_intent(self, query: str) -> QueryIntent:
         """Detect the primary intent of the query"""
         query_lower = query.lower()
         
-        # Score each intent
         intent_scores = {}
         for intent, patterns in self.intent_patterns.items():
             score = 0
@@ -152,25 +147,29 @@ class QueryProcessor:
         
         return QueryIntent.GENERAL
     
-    
     def _extract_keywords(self, query: str) -> List[str]:
-        """Extract important keywords from the query"""
-        # Remove common stop words but keep legal stop words
+        """Extract important keywords using NLTK if available, fallback to custom"""
+        if NLTK_AVAILABLE:
+            try:
+                stop_words = set(stopwords.words('english'))
+                legal_keep_words = {'will', 'shall', 'must', 'may', 'can', 'should'}
+                stop_words = stop_words - legal_keep_words
+                
+                tokens = word_tokenize(query.lower())
+                keywords = [word for word in tokens 
+                           if word.isalpha() and word not in stop_words and len(word) > 2]
+                return keywords
+            except:
+                pass
+        
         legal_stop_words = {
             'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
             'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-            'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'
+            'have', 'has', 'had', 'do', 'does', 'did', 'would', 'could',
+            'this', 'that', 'these', 'those'
         }
         
-        # Split into words and filter
         words = re.findall(r'\b\w+\b', query.lower())
         keywords = [w for w in words if w not in legal_stop_words and len(w) > 2]
         
         return keywords
-    
-    
-    
-    
-    
- 
