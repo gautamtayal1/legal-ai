@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import axios from 'axios';
@@ -27,8 +27,11 @@ interface CombinedStatus {
 
 export default function ChatPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const threadId = params.id as string;
   const { user } = useUser();
+  const isUploading = searchParams.get('uploading') === 'true';
   
   const [documents, setDocuments] = useState<DocumentStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -177,6 +180,11 @@ export default function ChatPage() {
             pollInterval = null;
             console.log('All documents are ready, stopped polling');
           }
+          
+          // Remove uploading parameter from URL when documents are ready
+          if (allReady && isUploading) {
+            router.replace(`/chat/${threadId}`);
+          }
         }
       } catch (err) {
         if (isMounted) {
@@ -239,29 +247,29 @@ export default function ChatPage() {
     );
   }
 
-  // Show chat interface if all documents are ready OR if no combinedStatus
-  if (combinedStatus?.is_ready || !combinedStatus) {
+  // Show processing modal immediately if uploading OR if documents are processing
+  if (isUploading || (combinedStatus && !combinedStatus.is_ready)) {
     return (
       <>
         <Sidebar />
         <MainContent>
-          <MainChatArea />
+          <DocumentProcessing 
+            documentId={combinedStatus?.id || ''}
+            status={combinedStatus}
+            onComplete={() => {
+            }}
+          />
         </MainContent>
       </>
     );
   }
 
-  // Show processing state
+  // Show chat interface for all other cases
   return (
     <>
       <Sidebar />
       <MainContent>
-        <DocumentProcessing 
-          documentId={combinedStatus.id}
-          status={combinedStatus}
-          onComplete={() => {
-          }}
-        />
+        <MainChatArea />
       </MainContent>
     </>
   );

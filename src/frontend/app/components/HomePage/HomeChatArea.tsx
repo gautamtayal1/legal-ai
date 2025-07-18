@@ -38,7 +38,7 @@ export default function HomeChatArea() {
       });
 
       if (thread.status === 200) {
-        router.push(`/chat/${newChatId}`);
+        router.push(`/chat/${newChatId}?uploading=true`);
       } else {
         throw new Error('Failed to create thread');
       }

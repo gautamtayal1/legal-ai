@@ -28,15 +28,14 @@ const DocumentProcessing = ({ documentId, status, onComplete }: DocumentProcessi
     { key: 'ready', icon: Check, label: "Ready" }
   ];
 
-  if (!status) {
-    return (
-      <div className="w-full h-screen bg-chat-area relative overflow-y-auto">
-        <div className="flex items-center justify-center min-h-full">
-          <Loader2 className="w-8 h-8 text-white animate-spin" />
-        </div>
-      </div>
-    );
-  }
+  // If no status (no documents in DB yet), show uploading step
+  const currentStatus = status || {
+    id: 0,
+    filename: 'Uploading documents...',
+    processing_status: 'uploading',
+    processing_step: 'uploading',
+    is_ready: false
+  };
 
   return (
     <div className="w-full h-screen bg-chat-area relative overflow-y-auto">
@@ -46,16 +45,16 @@ const DocumentProcessing = ({ documentId, status, onComplete }: DocumentProcessi
           {/* Header */}
           <div className="text-center mb-12">
             <h2 className="text-white text-2xl font-light mb-3">Processing Documents</h2>
-            <p className="text-white/60">{status.filename || `Document ${documentId}`}</p>
+            <p className="text-white/60">{currentStatus.filename || `Document ${documentId}`}</p>
           </div>
           
           {/* Vertical Timeline */}
           <div className="relative">
             {steps.map((step, index) => {
               // Check if this step is completed (current status is at this step or beyond)
-              const currentStepIndex = steps.findIndex(s => s.key === status.processing_status);
-              const isCompleted = currentStepIndex > index || (currentStepIndex === index && status.processing_status === 'ready');
-              const isActive = step.key === status.processing_status;
+              const currentStepIndex = steps.findIndex(s => s.key === currentStatus.processing_status);
+              const isCompleted = currentStepIndex > index || (currentStepIndex === index && currentStatus.processing_status === 'ready');
+              const isActive = step.key === currentStatus.processing_status;
               const isLastStep = index === steps.length - 1;
               
               return (
@@ -113,9 +112,9 @@ const DocumentProcessing = ({ documentId, status, onComplete }: DocumentProcessi
                     </div>
                     
                     <div className="h-6 flex items-start">
-                      {isActive && status.processing_step && (
+                      {isActive && currentStatus.processing_step && (
                         <p className="text-white/70 text-sm animate-pulse">
-                          {status.processing_step}
+                          {currentStatus.processing_step}
                         </p>
                       )}
                       

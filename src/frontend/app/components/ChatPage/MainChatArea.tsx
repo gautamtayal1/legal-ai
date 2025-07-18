@@ -3,34 +3,12 @@
 import { MessageSquare } from "lucide-react";
 import InputBox from "../InputBox";
 import { useChatSSE } from "@/app/hooks/useChatSSE";
-
-// interface Message {
-//   id: string;
-//   content: string;
-//   role: 'user' | 'assistant';
-//   created_at: string;
-// }
+import MessageFormatter from "./MessageFormatter";
 
 export default function MainChatArea() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, isLoadingMessages } = useChatSSE();
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChatSSE();
 
   const hasMessages = messages.length > 0;
-
-  if (isLoadingMessages) {
-    return (
-      <>
-        <div className="fixed inset-0 bg-chat-area"></div>
-        <div className="w-full h-screen relative flex flex-col">
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-white/60">Loading messages...</div>
-          </div>
-          <div className="flex-shrink-0 h-[10vh] flex items-center">
-            <InputBox handleSubmit={handleSubmit} input={input} handleInputChange={handleInputChange} isLoading={true} />
-          </div>
-        </div>
-      </>
-    );
-  }
 
   if (hasMessages) {
     return (
@@ -45,12 +23,10 @@ export default function MainChatArea() {
                 }`}>
                   <div className={`p-4 rounded-2xl ${
                     message.role === 'user' 
-                      ? 'bg-input-area text-white max-w-[70%]' 
-                      : 'text-white max-w-full'
+                      ? 'bg-input-area text-white max-w-[70%] text-lg' 
+                      : 'text-white max-w-full text-lg'
                   }`}>
-                    <div className="whitespace-pre-wrap break-words">
-                      {message.content}
-                    </div>
+                    <MessageFormatter content={message.content} role={message.role as 'user' | 'assistant'} />
                   </div>
                 </div>
               ))}
