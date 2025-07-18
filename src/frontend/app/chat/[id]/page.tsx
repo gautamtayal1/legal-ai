@@ -260,7 +260,6 @@ export default function ChatPage() {
           documentId={combinedStatus.id}
           status={combinedStatus}
           onComplete={() => {
-            // The polling will automatically detect when all documents are ready
           }}
         />
       </MainContent>

@@ -1,19 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import InputBox from "../InputBox";
+import { useChatSSE } from "@/app/hooks/useChatSSE";
 
-interface Message {
-  id: string;
-  content: string;
-  role: 'user' | 'assistant';
-  created_at: string;
-}
+// interface Message {
+//   id: string;
+//   content: string;
+//   role: 'user' | 'assistant';
+//   created_at: string;
+// }
 
 export default function MainChatArea() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChatSSE();
 
   const hasMessages = messages.length > 0;
 
@@ -21,8 +20,13 @@ export default function MainChatArea() {
     return (
       <div className="w-full h-screen bg-chat-area relative">
         <div className="flex-1 overflow-y-auto">
+          {messages.map((message) => (
+            <div key={message.id}>
+              {message.content}
+            </div>
+          ))}
         </div>
-        <InputBox />
+        <InputBox handleSubmit={handleSubmit} input={input} handleInputChange={handleInputChange} isLoading={isLoading} />
       </div>
     );
   }
@@ -42,7 +46,7 @@ export default function MainChatArea() {
           </p>
         </div>
       </div>      
-      <InputBox />
+      <InputBox handleSubmit={handleSubmit} input={input} handleInputChange={handleInputChange} isLoading={isLoading} />
     </div>
   );
-} 
+}

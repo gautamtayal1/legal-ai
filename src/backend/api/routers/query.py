@@ -14,6 +14,7 @@ from services.document_processing.embedding.vector_storage_service import Vector
 from services.document_processing.search_engine.elasticsearch_service import ElasticsearchService
 import logging
 import asyncio
+from fastapi.responses import StreamingResponse
 
 router = APIRouter(
     prefix="/query",
@@ -121,9 +122,9 @@ async def get_retrieval_service() -> RetrievalService:
     
     return _retrieval_service
 
-@router.post("", response_model=QueryResponse)
+@router.post("/stream")
 async def ask_question(
-    request: QueryRequest,
+    request: dict,
     db: Session = Depends(get_db),
     retrieval_service: RetrievalService = Depends(get_retrieval_service)
 ):
@@ -131,55 +132,67 @@ async def ask_question(
     Ask a natural language question about legal documents.
     """
     try:
-        if request.document_ids:
-            doc_ids = [int(doc_id) for doc_id in request.document_ids]
-            documents = db.query(Document).filter(
-                Document.id.in_(doc_ids),
-                Document.processing_status == ProcessingStatus.READY
-            ).all()
-            
-            if len(documents) != len(doc_ids):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Some documents not found or not ready for querying"
-                )
+        # Extract data from request
+        query = None
+        thread_id = None
         
-        if request.max_results != 20:
-            config = RetrievalConfig(
-                max_search_results=request.max_results,
-                generate_followup_questions=request.include_followup
+        if 'messages' in request:
+            # OpenAI format from useChat
+            messages = request['messages']
+            if messages:
+                query = messages[-1].get('content', '')
+            thread_id = request.get('thread_id')
+        elif 'query' in request:
+            # Direct query format
+            query = request['query']
+            thread_id = request.get('thread_id')
+        
+        if not query:
+            raise HTTPException(status_code=400, detail="No query found in request")
+        
+        if not thread_id:
+            raise HTTPException(status_code=400, detail="No thread_id found in request")
+        
+        # Fetch document IDs for this thread
+        documents = db.query(Document).filter(
+            Document.thread_id == thread_id,
+            Document.processing_status == ProcessingStatus.READY
+        ).all()
+        
+        if not documents:
+            raise HTTPException(
+                status_code=400,
+                detail="No ready documents found for this thread"
             )
-            retrieval_service.update_config(config)
         
-        result = await retrieval_service.retrieve_answer(
-            query=request.query,
-            document_ids=request.document_ids
+        doc_ids = [str(doc.id) for doc in documents]
+        
+        async def generate_stream():
+            try:
+                # Process the query first
+                processed_query = retrieval_service.query_processor.process_query(query)
+                
+                # Get search results
+                search_results = await retrieval_service._hybrid_search(processed_query, doc_ids)
+                
+                # Stream the answer generation
+                async for chunk in retrieval_service._generate_answer(processed_query, search_results):
+                    yield chunk
+                    
+            except Exception as e:
+                logger.error(f"Streaming failed: {str(e)}")
+                yield f"Error: {str(e)}"
+        
+        logger.info(f"Question answered successfully: {query[:50]}...")
+        
+        return StreamingResponse(
+            generate_stream(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            }
         )
-        
-        search_results_dict = _convert_search_results_to_dict(result.search_results)
-        
-        response = QueryResponse(
-            query=result.query,
-            answer=result.answer,
-            confidence=result.confidence,
-            sources_used=result.sources_used,
-            processing_time=result.processing_time,
-            query_intent=result.query_intent,
-            warnings=result.warnings,
-            followup_questions=result.followup_questions,
-            search_results=search_results_dict
-        )
-        
-        logger.info(f"Question answered successfully: {request.query[:50]}...")
-        
-        db.add(Message(
-            query=request.query,
-            answer=result.answer,
-            confidence=result.confidence,
-            sources_used=result.sources_used,
-            processing_time=result.processing_time,
-        ))
-        return response
         
     except Exception as e:
         logger.error(f"Question answering failed: {str(e)}")

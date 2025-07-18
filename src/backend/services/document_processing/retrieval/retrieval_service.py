@@ -145,26 +145,25 @@ class RetrievalService:
             
             prompt = self._create_answer_prompt(processed_query, context)
             
-            response = await asyncio.get_event_loop().run_in_executor(
-                None, 
-                lambda: self.openai_client.chat.completions.create(
-                    model=self.config.openai_model,
-                    messages=[
-                        {"role": "system", "content": self._get_system_prompt(processed_query.intent)},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=self.config.max_tokens,
-                    temperature=self.config.temperature
-                )
+            response = self.openai_client.chat.completions.create(
+                model=self.config.openai_model,
+                messages=[
+                    {"role": "system", "content": self._get_system_prompt(processed_query.intent)},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=self.config.max_tokens,
+                temperature=self.config.temperature,
+                stream=True
             )
             
-            answer = response.choices[0].message.content
-            
-            return answer
+            for chunk in response:
+                delta = chunk.choices[0].delta.content
+                if delta:
+                    yield delta
             
         except Exception as e:
             self.logger.error(f"Answer generation failed: {str(e)}")
-            return f"I apologize, but I encountered an error generating an answer: {str(e)}", []
+            yield f"I apologize, but I encountered an error generating an answer: {str(e)}"
     
     async def _hybrid_search(self, 
                            processed_query: ProcessedQuery, 

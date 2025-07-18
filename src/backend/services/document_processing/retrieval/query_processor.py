@@ -104,6 +104,7 @@ class QueryProcessor:
                 processed_query=processed_query,
                 intent=intent,
                 keywords=keywords,
+                metadata={}
             )
             
         except Exception as e:
@@ -113,6 +114,7 @@ class QueryProcessor:
                 processed_query=query,
                 intent=QueryIntent.GENERAL,
                 keywords=[],
+                metadata={}
             )
     
     def _clean_query(self, query: str) -> str:
