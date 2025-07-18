@@ -22,13 +22,17 @@ export default function MainChatArea() {
         <div className="flex-1 overflow-y-auto pb-6">
           <div className="max-w-[90%] sm:max-w-[600px] md:max-w-[600px] lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1000px] mx-auto pt-6">
             {messages.map((message) => (
-              <div key={message.id} className={`mb-4 p-4 rounded-lg ${
-                message.role === 'user' 
-                  ? 'bg-input-area text-white ml-auto max-w-xs rounded-4xl' 
-                  : 'text-white mr-auto max-w-full'
+              <div key={message.id} className={`mb-4 flex ${
+                message.role === 'user' ? 'justify-end' : 'justify-start'
               }`}>
-                <div className="whitespace-pre-wrap">
-                  {message.content}
+                <div className={`p-4 rounded-2xl max-w-[70%] ${
+                  message.role === 'user' 
+                    ? 'bg-input-area text-white' 
+                    : 'text-white'
+                }`}>
+                  <div className="whitespace-pre-wrap break-words">
+                    {message.content}
+                  </div>
                 </div>
               </div>
             ))}
