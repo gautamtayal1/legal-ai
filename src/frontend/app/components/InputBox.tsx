@@ -19,8 +19,8 @@ const InputBox: React.FC<InputBoxProps> = ({ input, handleInputChange, handleSub
   };
 
   return (
-    <div>
-      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-[90%] sm:w-[600px] md:w-[600px] lg:w-[700px] xl:w-[800px] 2xl:w-[1000px]">
+    <div className="w-full flex justify-center px-4">
+      <div className="w-full max-w-[90%] sm:max-w-[600px] md:max-w-[600px] lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1000px]">
         <div className="bg-input-area rounded-2xl border border-white/5 p-3">
           <form onSubmit={handleSubmit} className="flex items-center gap-3">
             <input 

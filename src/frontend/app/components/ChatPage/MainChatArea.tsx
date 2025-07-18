@@ -18,31 +18,32 @@ export default function MainChatArea() {
 
   if (hasMessages) {
     return (
-      <div className="w-full h-screen bg-chat-area relative">
-        <div className="flex-1 overflow-y-auto">
-          {messages.map((message) => (
-            <div key={message.id} className={`mb-4 p-4 rounded-lg ${
-              message.role === 'user' 
-                ? 'bg-blue-600 text-white ml-auto max-w-xs' 
-                : 'bg-gray-700 text-white mr-auto max-w-2xl'
-            }`}>
-              <div className="text-sm font-medium mb-1">
-                {message.role === 'user' ? 'You' : 'Assistant'}
+      <div className="w-full h-screen bg-chat-area relative flex flex-col">
+        <div className="flex-1 overflow-y-auto pb-6">
+          <div className="max-w-[90%] sm:max-w-[600px] md:max-w-[600px] lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1000px] mx-auto pt-6">
+            {messages.map((message) => (
+              <div key={message.id} className={`mb-4 p-4 rounded-lg ${
+                message.role === 'user' 
+                  ? 'bg-input-area text-white ml-auto max-w-xs rounded-4xl' 
+                  : 'text-white mr-auto max-w-full'
+              }`}>
+                <div className="whitespace-pre-wrap">
+                  {message.content}
+                </div>
               </div>
-              <div className="whitespace-pre-wrap">
-                {message.content}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-        <InputBox handleSubmit={handleSubmit} input={input} handleInputChange={handleInputChange} isLoading={isLoading} />
+        <div className="flex-shrink-0 h-[10vh] flex items-center">
+          <InputBox handleSubmit={handleSubmit} input={input} handleInputChange={handleInputChange} isLoading={isLoading} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-screen bg-chat-area relative">
-      <div className="flex flex-col items-center justify-center h-full">
+    <div className="w-full h-screen bg-chat-area relative flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-button/20 rounded-xl flex items-center justify-center mx-auto mb-6">
             <MessageSquare className="w-8 h-8 text-button" />
@@ -55,7 +56,9 @@ export default function MainChatArea() {
           </p>
         </div>
       </div>      
-      <InputBox handleSubmit={handleSubmit} input={input} handleInputChange={handleInputChange} isLoading={isLoading} />
+      <div className="flex-shrink-0 h-[10vh] flex items-center">
+        <InputBox handleSubmit={handleSubmit} input={input} handleInputChange={handleInputChange} isLoading={isLoading} />
+      </div>
     </div>
   );
 }
