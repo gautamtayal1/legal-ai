@@ -9,11 +9,14 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from core.database import get_db
 from models.document import Document, ProcessingStatus
+from models.message import Message
+from models.thread import Thread
 from services.document_processing.retrieval import RetrievalService, RetrievalConfig
 from services.document_processing.embedding.vector_storage_service import VectorStorageService
 from services.document_processing.search_engine.elasticsearch_service import ElasticsearchService
 import logging
 import asyncio
+import uuid
 from fastapi.responses import StreamingResponse
 
 router = APIRouter(
@@ -135,6 +138,7 @@ async def ask_question(
         # Extract data from request
         query = None
         thread_id = None
+        user_id = None
         
         if 'messages' in request:
             # OpenAI format from useChat
@@ -142,16 +146,43 @@ async def ask_question(
             if messages:
                 query = messages[-1].get('content', '')
             thread_id = request.get('thread_id')
+            user_id = request.get('user_id')
         elif 'query' in request:
             # Direct query format
             query = request['query']
             thread_id = request.get('thread_id')
+            user_id = request.get('user_id')
         
         if not query:
             raise HTTPException(status_code=400, detail="No query found in request")
         
         if not thread_id:
             raise HTTPException(status_code=400, detail="No thread_id found in request")
+            
+        if not user_id:
+            raise HTTPException(status_code=400, detail="No user_id found in request")
+        
+        # Verify thread exists and user has access
+        thread = db.query(Thread).filter(
+            Thread.id == thread_id,
+            Thread.user_id == user_id
+        ).first()
+        
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        # Save user message to database
+        user_message = Message(
+            id=str(uuid.uuid4()),
+            thread_id=thread_id,
+            user_id=user_id,
+            content=query,
+            role="user"
+        )
+        
+        db.add(user_message)
+        db.commit()
+        db.refresh(user_message)
         
         # Fetch document IDs for this thread
         documents = db.query(Document).filter(
@@ -167,7 +198,11 @@ async def ask_question(
         
         doc_ids = [str(doc.id) for doc in documents]
         
+        # Store assistant response for saving to DB
+        assistant_response = ""
+        
         async def generate_stream():
+            nonlocal assistant_response
             try:
                 # Process the query first
                 processed_query = retrieval_service.query_processor.process_query(query)
@@ -178,9 +213,23 @@ async def ask_question(
                 # Stream the answer generation - plain text for streamProtocol: 'text'
                 async for chunk in retrieval_service._generate_answer(processed_query, search_results):
                     if chunk:
+                        assistant_response += chunk
                         yield chunk
                         # Ensure immediate streaming
                         await asyncio.sleep(0)
+                
+                # Save assistant message to database after streaming completes
+                if assistant_response:
+                    assistant_message = Message(
+                        id=str(uuid.uuid4()),
+                        thread_id=thread_id,
+                        user_id=user_id,
+                        content=assistant_response,
+                        role="assistant"
+                    )
+                    
+                    db.add(assistant_message)
+                    db.commit()
                     
             except Exception as e:
                 logger.error(f"Streaming failed: {str(e)}")

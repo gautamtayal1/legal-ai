@@ -12,9 +12,22 @@ import { useChatSSE } from "@/app/hooks/useChatSSE";
 // }
 
 export default function MainChatArea() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChatSSE();
+  const { messages, input, handleInputChange, handleSubmit, isLoading, isLoadingMessages } = useChatSSE();
 
   const hasMessages = messages.length > 0;
+
+  if (isLoadingMessages) {
+    return (
+      <div className="w-full h-screen bg-chat-area relative flex flex-col">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-white/60">Loading messages...</div>
+        </div>
+        <div className="flex-shrink-0 h-[10vh] flex items-center">
+          <InputBox handleSubmit={handleSubmit} input={input} handleInputChange={handleInputChange} isLoading={true} />
+        </div>
+      </div>
+    );
+  }
 
   if (hasMessages) {
     return (
