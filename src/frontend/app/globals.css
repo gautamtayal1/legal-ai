@@ -68,6 +68,32 @@
   100% { transform: translateY(-100vh); opacity: 0; }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fade-in-delay {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(172, 134, 240, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(172, 134, 240, 0.6), 0 0 30px rgba(172, 134, 240, 0.3); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slide-up {
+  0% { transform: translateY(100px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -103,6 +129,33 @@
 
 .animate-data-stream {
   animation: data-stream 6s linear infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(110deg, transparent 40%, rgba(255, 255, 255, 0.3) 50%, transparent 60%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+.animate-fade-in-delay {
+  animation: fade-in-delay 1s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.6s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.8s ease-out;
+}
+
+.shadow-3xl {
+  box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 @media (prefers-color-scheme: dark) {

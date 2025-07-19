@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, FileText, Brain, Search } from "lucide-react";
+import { Upload, FileText, Brain, Search, Sparkles, Zap, Shield, ArrowRight } from "lucide-react";
 import DocumentUploadModal from "../DocumentUploadModal";
 import { useUser } from "@clerk/nextjs";
 import axios from "axios";
@@ -19,6 +19,16 @@ export default function HomeChatArea() {
   const { user } = useUser();
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [currentFeature, setCurrentFeature] = useState(0);
+
+  useEffect(() => {
+    setIsVisible(true);
+    const interval = setInterval(() => {
+      setCurrentFeature(prev => (prev + 1) % 3);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleUploadClick = () => {
     setIsModalOpen(true);
@@ -77,66 +87,73 @@ export default function HomeChatArea() {
     {
       icon: Search,
       title: "Multi-Round Retrieval",
-      description: "Automatically fetches related clauses for complete context"
+      description: "Automatically fetches related clauses for complete context",
+      color: "from-blue-500 to-cyan-500"
     },
     {
       icon: FileText,
       title: "Definition Resolution",
-      description: "Automatically finds and applies defined terms from your documents"
+      description: "Automatically finds and applies defined terms from your documents",
+      color: "from-purple-500 to-pink-500"
     },
     {
       icon: Brain,
       title: "Obligation Analysis",
-      description: "Identifies who must do what, when, and under which conditions"
+      description: "Identifies who must do what, when, and under which conditions",
+      color: "from-orange-500 to-red-500"
     }
   ];
 
   return (
     <>
-      <div className="w-full h-screen bg-chat-area relative overflow-y-auto">
-        <div className="flex flex-col items-center justify-center min-h-full px-8">
+      <div className="w-full h-screen bg-chat-area relative">
+        {/* Subtle background accent */}
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-button/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl"></div>
+        
+        <div className="flex flex-col items-center justify-center h-full px-6 lg:px-12 max-w-6xl mx-auto relative z-10">
           
           {/* Hero Section */}
-          <div className="text-center mb-12 w-full max-w-3xl">
-            <div className="mb-8">
-              <div className="w-16 h-16 bg-button/20 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <FileText className="w-8 h-8 text-button" />
-              </div>
-              
-              <h1 className="text-white text-3xl lg:text-4xl font-light mb-4 leading-tight">
-                How can I help you crack legal codes?
-              </h1>
-              
-              <p className="text-white/60 text-base max-w-xl mx-auto leading-relaxed mb-8">
-                Upload your legal documents and get instant AI-powered insights
-              </p>
+          <div className="text-center mb-16">
             
-              <button
-                onClick={handleUploadClick}
-                className="bg-button hover:bg-button/80 text-white px-8 py-3 rounded-xl transition-all duration-200 flex items-center space-x-2 font-medium mx-auto shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                <Upload size={20} />
-                <span>Upload Documents</span>
-              </button>
-            </div>
+            <h1 className="text-white text-4xl lg:text-6xl font-bold mb-6 leading-tight">
+              Legal AI Assistant
+            </h1>
+            
+            <p className="text-white/80 text-lg lg:text-xl max-w-2xl mx-auto mb-8">
+              Upload your legal documents and get instant AI-powered analysis
+            </p>
+          
+            <button
+              onClick={handleUploadClick}
+              className="bg-button hover:bg-button/90 text-white px-8 py-4 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+            >
+              Upload Documents
+            </button>
+            
           </div>
 
-          {/* Features Grid */}
-          <div className="w-full max-w-4xl">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {features.map((feature, index) => {
-                const Icon = feature.icon;
-                return (
-                  <div key={index} className="bg-input-area/40 rounded-xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 text-center hover:transform hover:scale-105">
-                    <div className="w-12 h-12 bg-button/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <Icon className="w-6 h-6 text-button" />
+          {/* Features */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <div key={index} className="group bg-input-area/50 backdrop-blur-sm rounded-xl p-6 text-center border border-white/5 hover:border-white/10 transition-all duration-300 hover:scale-105">
+                  <div className="relative">
+                    <div className={`w-12 h-12 bg-gradient-to-br ${feature.color} rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                      <Icon className="w-6 h-6 text-white" />
                     </div>
-                    <h3 className="text-white text-base font-semibold mb-2">{feature.title}</h3>
-                    <p className="text-white/60 text-sm leading-relaxed">{feature.description}</p>
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-button/60 rounded-full animate-ping opacity-0 group-hover:opacity-100"></div>
                   </div>
-                );
-              })}
-            </div>
+                  <h3 className="text-white text-lg font-semibold mb-2 group-hover:text-button transition-colors duration-300">
+                    {feature.title}
+                  </h3>
+                  <p className="text-white/70 text-sm group-hover:text-white/90 transition-colors duration-300">
+                    {feature.description}
+                  </p>
+                </div>
+              );
+            })}
           </div>
 
         </div>
