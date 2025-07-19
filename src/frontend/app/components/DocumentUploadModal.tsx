@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from 'react';
-import { X, Upload, FileText, Trash2, Plus, ArrowRight } from 'lucide-react';
-import { useUser } from '@clerk/nextjs';
+import { X, Upload, FileText, Trash2, ArrowRight } from 'lucide-react';
 
 interface UploadedFile {
   id: string;
@@ -217,7 +216,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onSubmit }: DocumentUploadModalP
         <div className="p-6 border-t border-white/10 bg-chat-area/50 flex-shrink-0">
           <div className="flex items-center justify-between">
             <p className="text-white/60 text-sm">
-              Once you start the conversation, you can't add more documents
+              Once you start the conversation, you cannot add more documents
             </p>
             <div className="flex space-x-3">
               <button

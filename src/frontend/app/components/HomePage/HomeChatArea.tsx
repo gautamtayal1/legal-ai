@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, FileText, Brain, Search, Sparkles, Zap, Shield, ArrowRight } from "lucide-react";
+import { Upload, FileText, Brain, Search, ArrowRight } from "lucide-react";
 import DocumentUploadModal from "../DocumentUploadModal";
 import { useUser } from "@clerk/nextjs";
 import { useSidebar } from "../Sidebar";
@@ -22,14 +22,9 @@ export default function HomeChatArea() {
   const { threads, setThreads } = useSidebar();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [currentFeature, setCurrentFeature] = useState(0);
 
   useEffect(() => {
     setIsVisible(true);
-    const interval = setInterval(() => {
-      setCurrentFeature(prev => (prev + 1) % 3);
-    }, 3000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleUploadClick = () => {

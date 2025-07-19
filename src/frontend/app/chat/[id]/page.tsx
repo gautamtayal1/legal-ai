@@ -183,7 +183,7 @@ export default function ChatPage() {
             router.replace(`/chat/${threadId}`);
           }
         }
-      } catch (error) {
+      } catch {
         if (isMounted) {
           setError('Failed to fetch documents for this thread');
           setDocuments([]);
@@ -218,7 +218,7 @@ export default function ChatPage() {
         const threadsResponse = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/api/threads/${user.id}`
         );
-        const sortedThreads = threadsResponse.data.sort((a, b) => 
+        const sortedThreads = threadsResponse.data.sort((a: { created_at: string }, b: { created_at: string }) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         setThreads(sortedThreads);
@@ -272,7 +272,7 @@ export default function ChatPage() {
         <Sidebar />
         <MainContent>
           <DocumentProcessing 
-            documentId={combinedStatus?.id ? String(combinedStatus.id) : ''}
+            documentId={combinedStatus?.id || 0}
             status={combinedStatus}
             onComplete={() => {
             }}

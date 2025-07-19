@@ -14,7 +14,7 @@ const InputBox: React.FC<InputBoxProps> = ({ input, handleInputChange, handleSub
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as any);
+      handleSubmit(e as React.KeyboardEvent<HTMLTextAreaElement>);
     }
   };
 
