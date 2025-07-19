@@ -61,7 +61,6 @@ export default function ChatPage() {
     }
   };
 
-  // Get status priority (lower number = earlier in process)
   const getStatusPriority = (status: string): number => {
     switch (status) {
       case 'uploading': return 1;
@@ -69,12 +68,11 @@ export default function ChatPage() {
       case 'chunking': return 3;
       case 'indexing': return 4;
       case 'ready': return 5;
-      case 'failed': return 0; // Failed has highest priority to show error
+      case 'failed': return 0;
       default: return 1;
     }
   };
 
-  // Get processing step description
   const getProcessingStep = (status: string, filename: string): string => {
     switch (status) {
       case 'uploading':
@@ -94,11 +92,9 @@ export default function ChatPage() {
     }
   };
 
-  // Find the slowest document and create combined status
   const getCombinedStatus = (documents: DocumentStatus[]): CombinedStatus | null => {
     if (documents.length === 0) return null;
 
-    // First check for failed documents
     const failedDoc = documents.find(doc => doc.processing_status === 'failed');
     if (failedDoc) {
       return {
@@ -111,7 +107,6 @@ export default function ChatPage() {
       };
     }
 
-    // Find the document with the lowest status (furthest behind)
     let slowestDoc = documents[0];
     let lowestPriority = getStatusPriority(mapDbStatusToUi(slowestDoc.processing_status));
 
@@ -127,7 +122,6 @@ export default function ChatPage() {
 
     const uiStatus = mapDbStatusToUi(slowestDoc.processing_status);
     
-    // Special handling for multiple documents
     let processingStep;
     if (documents.length > 1) {
       const completedCount = documents.filter(doc => doc.is_ready).length;
@@ -156,7 +150,6 @@ export default function ChatPage() {
     let isMounted = true;
     let pollInterval: NodeJS.Timeout | null = null;
     
-    // Clear documents if no user
     if (!user?.id) {
       setDocuments([]);
       setError(null);
@@ -174,22 +167,18 @@ export default function ChatPage() {
           setDocuments(newDocuments);
           setError(null);
           
-          // Check if all documents are ready
           const allReady = newDocuments.length > 0 && newDocuments.every((doc: DocumentStatus) => doc.is_ready);
           
-          // Clear interval if all documents are ready
           if (allReady && pollInterval) {
             clearInterval(pollInterval);
             pollInterval = null;
             console.log('All documents are ready, stopped polling');
             
-            // Only auto-name if we're coming from the uploading flow
             if (isUploading && !hasAutoNamed) {
               autoNameThread();
             }
           }
           
-          // Remove uploading parameter from URL when documents are ready
           if (allReady && isUploading) {
             router.replace(`/chat/${threadId}`);
           }
@@ -197,8 +186,7 @@ export default function ChatPage() {
       } catch (error) {
         if (isMounted) {
           setError('Failed to fetch documents for this thread');
-          setDocuments([]); // Clear on error
-          // Clear polling on error
+          setDocuments([]);
           if (pollInterval) {
             clearInterval(pollInterval);
             pollInterval = null;
@@ -227,7 +215,6 @@ export default function ChatPage() {
       );
       
       if (response.data.new_name) {
-        // Update the sidebar threads with the new name
         const threadsResponse = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/api/threads/${user.id}`
         );
@@ -240,11 +227,10 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error('Failed to auto-name thread:', error);
-      setHasAutoNamed(true); // Prevent retries
+      setHasAutoNamed(true);
     }
   };
 
-  // Show error state
   if (error) {
     return (
       <>
@@ -260,7 +246,6 @@ export default function ChatPage() {
   
   const combinedStatus = getCombinedStatus(documents);
 
-  // Show failed state
   if (combinedStatus?.processing_status === 'failed') {
     return (
       <>
@@ -281,7 +266,6 @@ export default function ChatPage() {
     );
   }
 
-  // Show processing modal immediately if uploading OR if documents are processing
   if (isUploading || (combinedStatus && !combinedStatus.is_ready)) {
     return (
       <>
@@ -298,7 +282,6 @@ export default function ChatPage() {
     );
   }
 
-  // Show chat interface for all other cases
   return (
     <>
       <Sidebar />

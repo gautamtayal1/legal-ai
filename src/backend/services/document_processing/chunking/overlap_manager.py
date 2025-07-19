@@ -8,7 +8,7 @@ from .base import DocumentChunk
 @dataclass
 class OverlapConfig:
     overlap_size: int = 200
-    overlap_strategy: str = "sentence_aware"  # "sentence_aware", "word_aware", "character"
+    overlap_strategy: str = "sentence_aware"  
     min_overlap_size: int = 50
     max_overlap_size: int = 500
     preserve_sentence_boundaries: bool = True

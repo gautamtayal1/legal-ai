@@ -13,19 +13,16 @@ from api.routers import query
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global services for proper lifecycle management
 _services = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage application lifecycle - startup and shutdown"""
     logger.info("🚀 Starting Legal AI - Inquire API")
     
     try:
         from services.document_processing.embedding.vector_storage_service import VectorStorageService
         from services.document_processing.search_engine.elasticsearch_service import ElasticsearchService
         
-        # Initialize services with error handling
         try:
             _services["vector_storage"] = VectorStorageService()
             logger.info("✅ VectorStorageService initialized")
@@ -42,10 +39,9 @@ async def lifespan(app: FastAPI):
         
         logger.info("✅ Application startup completed")
         
-        yield  # Application runs here
+        yield
         
     finally:
-        # Cleanup services
         logger.info("🔄 Shutting down services...")
         
         try:
@@ -82,7 +78,6 @@ app.include_router(query.router, prefix="/api")
 
 @app.get("/")
 async def root():
-    """Root endpoint with API information"""
     return {
         "message": "Legal AI - Inquire API",
         "version": "1.0.0",
@@ -99,21 +94,17 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint with service status"""
     status = {"service": "inquire", "status": "healthy"}
     
-    # Check service health
     health_checks = {}
     
     try:
         if "vector_storage" in _services and _services["vector_storage"]:
-            # Simple connectivity check
             health_checks["chromadb"] = "connected"
         else:
             health_checks["chromadb"] = "not_available"
             
         if "elasticsearch" in _services and _services["elasticsearch"]:
-            # Check if elasticsearch is healthy
             es_health = await _services["elasticsearch"].health_check()
             health_checks["elasticsearch"] = "healthy" if es_health else "unhealthy"
         else:

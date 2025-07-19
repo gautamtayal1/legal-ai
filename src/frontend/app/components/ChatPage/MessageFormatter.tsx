@@ -14,7 +14,6 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content, role }) =>
     );
   }
 
-  // Format assistant messages
   const formatAssistantMessage = (text: string) => {
     const lines = text.split('\n');
     const formattedElements: React.ReactNode[] = [];
@@ -28,7 +27,6 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content, role }) =>
         continue;
       }
 
-      // Headers (lines that end with :)
       if (line.endsWith(':') && line.length > 3 && !line.includes('http')) {
         formattedElements.push(
           <h3 key={currentIndex++} className="font-semibold text-xl mt-3 mb-1 text-gray-100">
@@ -36,7 +34,6 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content, role }) =>
           </h3>
         );
       }
-      // Numbered lists (1. 2. 3.)
       else if (/^\d+\.\s/.test(line)) {
         const content = line.replace(/^\d+\.\s/, '');
         const processedContent = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -47,7 +44,6 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content, role }) =>
           </div>
         );
       }
-      // Bullet points (- or *)
       else if (/^[-*]\s/.test(line)) {
         const bulletContent = line.replace(/^[-*]\s/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         formattedElements.push(
@@ -57,7 +53,6 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content, role }) =>
           </div>
         );
       }
-      // Sub-bullet points (  - or   *)
       else if (/^\s{2,}[-*]\s/.test(line)) {
         const subBulletContent = line.replace(/^\s*[-*]\s/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         formattedElements.push(
@@ -67,7 +62,6 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content, role }) =>
           </div>
         );
       }
-      // Bold text (**text**) - remove stars and make bold
       else if (line.includes('**')) {
         const parts = line.split(/(\*\*.*?\*\*)/);
         formattedElements.push(
@@ -84,7 +78,6 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content, role }) =>
           </p>
         );
       }
-      // Regular paragraphs
       else {
         const paragraphContent = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         formattedElements.push(

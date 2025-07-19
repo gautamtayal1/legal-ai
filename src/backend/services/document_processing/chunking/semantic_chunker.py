@@ -33,7 +33,6 @@ class SemanticChunker(ChunkingService):
             
         metadata = metadata or {}
         
-        # Use recursive chunking for better semantic boundaries
         chunks = self._recursive_chunk(text, document_id, metadata)
         
         return self.validate_chunks(chunks)

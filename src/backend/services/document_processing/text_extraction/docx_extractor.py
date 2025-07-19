@@ -13,12 +13,10 @@ class DOCXExtractor(TextExtractor):
             doc = docx.Document(file_path)
             text_parts = []
             
-            # Extract paragraphs
             for para in doc.paragraphs:
                 if para.text.strip():
                     text_parts.append(para.text)
             
-            # Extract tables
             for table in doc.tables:
                 for row in table.rows:
                     row_text = ' | '.join(cell.text.strip() for cell in row.cells)

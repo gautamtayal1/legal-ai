@@ -43,7 +43,6 @@ class QueryProcessor:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         
-        # Legal intent patterns
         self.intent_patterns = {
             QueryIntent.DEFINITION: [
                 r'what\s+(?:is|are|does|means?)\s+',
@@ -90,13 +89,10 @@ class QueryProcessor:
         This implements Step 12: Query Preprocessing from the architecture.
         """
         try:
-            # Clean and normalize query
             processed_query = self._clean_query(query)
             
-            # Detect intent
             intent = self._detect_intent(query)
             
-            # Extract keywords
             keywords = self._extract_keywords(processed_query)
             
             return ProcessedQuery(
@@ -143,7 +139,6 @@ class QueryProcessor:
                 score += matches
             intent_scores[intent] = score
         
-        # Return intent with highest score, or GENERAL if no matches
         if max(intent_scores.values()) > 0:
             return max(intent_scores, key=intent_scores.get)
         

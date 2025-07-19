@@ -18,12 +18,10 @@ class ChunkMetadata:
     chunk_type: str
     chunking_method: str
     
-    # Content analysis
     word_count: int
     sentence_count: int
     paragraph_count: int
     
-    # Legal-specific metadata
     contains_definitions: bool = False
     contains_obligations: bool = False
     contains_parties: bool = False
@@ -31,22 +29,18 @@ class ChunkMetadata:
     contains_amounts: bool = False
     contains_references: bool = False
     
-    # Position and context
     start_position: int = 0
     end_position: int = 0
     parent_section: Optional[str] = None
     section_level: int = 0
     
-    # Quality metrics
     readability_score: Optional[float] = None
     coherence_score: Optional[float] = None
     legal_complexity_score: Optional[float] = None
     
-    # Relationships
     related_chunks: List[str] = None
     cross_references: List[str] = None
     
-    # Additional metadata
     custom_metadata: Dict[str, Any] = None
     
     def __post_init__(self):

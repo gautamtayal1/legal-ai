@@ -8,7 +8,6 @@ import logging
 import sys
 import os
 
-# Add the backend directory to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from services.document_processing.retrieval.query_processor import QueryProcessor
@@ -18,7 +17,6 @@ from services.document_processing.retrieval.retrieval_service import RetrievalSe
 from services.document_processing.embedding.vector_storage_service import VectorStorageService
 from services.document_processing.search_engine.elasticsearch_service import ElasticsearchService
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,6 @@ async def test_query_processor():
     
     processor = QueryProcessor()
     
-    # Test different types of queries
     test_queries = [
         "What are my termination rights?",
         "Define intellectual property in this contract",
@@ -54,19 +51,15 @@ async def test_services_initialization():
     logger.info("Testing Services Initialization...")
     
     try:
-        # Test vector storage service
         vector_service = VectorStorageService()
         logger.info("✅ VectorStorageService initialized")
         
-        # Test elasticsearch service
         elasticsearch_service = ElasticsearchService()
         logger.info("✅ ElasticsearchService initialized")
         
-        # Test query processor
         query_processor = QueryProcessor()
         logger.info("✅ QueryProcessor initialized")
         
-        # Test hybrid retriever
         hybrid_config = HybridSearchConfig()
         hybrid_retriever = HybridRetriever(
             vector_service=vector_service,
@@ -76,11 +69,9 @@ async def test_services_initialization():
         )
         logger.info("✅ HybridRetriever initialized")
         
-        # Test answer generator
         answer_generator = AnswerGenerator()
         logger.info("✅ AnswerGenerator initialized")
         
-        # Test retrieval service
         retrieval_service = RetrievalService(
             vector_service=vector_service,
             elasticsearch_service=elasticsearch_service
@@ -98,12 +89,10 @@ async def test_health_checks():
     logger.info("Testing Health Checks...")
     
     try:
-        # Test Elasticsearch health
         elasticsearch_service = ElasticsearchService()
         es_health = await elasticsearch_service.health_check()
         logger.info(f"Elasticsearch health: {'✅ Healthy' if es_health else '❌ Unhealthy'}")
         
-        # Test vector storage health
         vector_service = VectorStorageService()
         vector_stats = await vector_service.get_collection_stats()
         logger.info(f"Vector storage health: {'✅ Healthy' if vector_stats else '❌ Unhealthy'}")
@@ -119,18 +108,15 @@ async def test_mock_retrieval():
     logger.info("Testing Mock Retrieval...")
     
     try:
-        # Initialize services
         retrieval_service = await test_services_initialization()
         if not retrieval_service:
             logger.warning("Services not available, skipping retrieval test")
             return
         
-        # Test query
         test_query = "What are the termination conditions?"
         
         logger.info(f"Testing query: {test_query}")
         
-        # Test search only (no answer generation)
         try:
             search_results = await retrieval_service.search_only(query=test_query)
             logger.info(f"Search returned {len(search_results)} results")
@@ -142,7 +128,6 @@ async def test_mock_retrieval():
         except Exception as e:
             logger.warning(f"Search test failed: {e}")
         
-        # Test full retrieval (with answer generation)
         try:
             retrieval_result = await retrieval_service.retrieve_answer(query=test_query)
             logger.info(f"Retrieval completed:")
@@ -161,16 +146,12 @@ async def main():
     logger.info("🚀 Starting Retrieval System Tests")
     logger.info("=" * 50)
     
-    # Test 1: Query Processor
     await test_query_processor()
     
-    # Test 2: Services Initialization
     await test_services_initialization()
     
-    # Test 3: Health Checks
     services_healthy = await test_health_checks()
     
-    # Test 4: Mock Retrieval (only if services are healthy)
     if services_healthy:
         await test_mock_retrieval()
     else:

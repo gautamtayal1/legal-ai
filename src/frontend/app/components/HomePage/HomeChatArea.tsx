@@ -50,7 +50,6 @@ export default function HomeChatArea() {
       });
 
       if (thread.status === 200) {
-        // Add the new thread to sidebar immediately
         const newThread = {
           id: newChatId,
           title: 'New Chat',
@@ -83,7 +82,6 @@ export default function HomeChatArea() {
         uploadedDocs.push(result);
       }
       
-      // Close modal
       setIsModalOpen(false);
       
       
@@ -121,16 +119,13 @@ export default function HomeChatArea() {
   return (
     <>
       <div className="w-full h-screen bg-chat-area relative">
-        {/* Subtle background accent */}
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-button/5 rounded-full blur-3xl"></div>
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl"></div>
         
         <div className="flex flex-col items-center justify-center h-full px-6 lg:px-12 max-w-6xl mx-auto relative z-10">
           
-          {/* Hero Section */}
           <div className={`text-center mb-16 transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
             
-            {/* Animated title with gradient and glow */}
             <div className="relative mb-6">
               <h1 className="text-transparent bg-clip-text bg-gradient-to-r from-white via-button to-purple-300 text-4xl lg:text-6xl font-bold leading-tight animate-pulse">
                 Inquire
@@ -140,7 +135,6 @@ export default function HomeChatArea() {
               </div>
             </div>
             
-            {/* Animated subtitle with typewriter effect */}
             <div className="relative mb-8">
               <p className="text-white/80 text-lg lg:text-xl max-w-2xl mx-auto">
                 Your legal AI assistant
@@ -148,7 +142,6 @@ export default function HomeChatArea() {
               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-24 h-0.5 bg-gradient-to-r from-transparent via-button to-transparent animate-pulse"></div>
             </div>
           
-            {/* Enhanced button with more animations */}
             <div className="relative group">
               <button
                 onClick={handleUploadClick}
@@ -166,7 +159,6 @@ export default function HomeChatArea() {
             
           </div>
 
-          {/* Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
             {features.map((feature, index) => {
               const Icon = feature.icon;

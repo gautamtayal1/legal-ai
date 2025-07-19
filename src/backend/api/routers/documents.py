@@ -21,7 +21,6 @@ AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 @router.get("/")
 async def list_documents(user_id: str = Query(..., description="User ID to filter documents"), db: Session = Depends(get_db)):
-    """Get all documents for a specific user."""
     documents = db.query(Document).filter(Document.user_id == user_id).all()
     return [
         {
@@ -47,7 +46,6 @@ async def upload_document(
     user_id: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    """Upload a document to S3 and save metadata to database."""
     logging.debug(f"Received upload request: filename={file.filename}, content_type={file.content_type}, thread_id={thread_id}, user_id={user_id}")
 
     allowed_types = {
@@ -115,7 +113,6 @@ async def upload_document(
 
 @router.get("/{doc_id}")
 async def get_document(doc_id: str):
-    """Fetch single document placeholder"""
     raise HTTPException(status_code=404, detail="Document not found")
 
 @router.get("/{doc_id}/status")
@@ -124,7 +121,6 @@ async def get_document_status(
     user_id: str = Query(..., description="User ID for authorization"),
     db: Session = Depends(get_db)
 ):
-    """Get document processing status for live updates"""
     document = db.query(Document).filter(Document.id == doc_id, Document.user_id == user_id).first()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found or access denied")
@@ -142,13 +138,10 @@ async def get_documents_by_thread(
     user_id: str = Query(..., description="User ID for authorization"),
     db: Session = Depends(get_db)
 ):
-    """Get all documents for a specific thread owned by the user"""
-    # First verify the user owns this thread
     thread = db.query(Thread).filter(Thread.id == thread_id, Thread.user_id == user_id).first()
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found or access denied")
     
-    # Now get documents for this thread
     documents = db.query(Document).filter(Document.thread_id == thread_id).all()
     
     return [

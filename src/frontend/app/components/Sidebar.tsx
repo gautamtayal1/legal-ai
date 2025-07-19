@@ -51,10 +51,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/threads/${threadId}?user_id=${user.id}`
       );
       
-      // Update local state
       setThreads(threads.filter(thread => thread.id !== threadId));
       
-      // If we're currently viewing the deleted thread, redirect to home
       if (window.location.pathname.includes(threadId)) {
         window.location.href = '/';
       }
@@ -123,7 +121,6 @@ export default function Sidebar() {
   
   return (
     <>
-      {/* Toggle Button - Always visible */}
       <button
         onClick={toggleSidebar}
         className={`fixed top-4 left-4 z-50 w-10 h-10 bg-sidebar border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all duration-300 ${
@@ -133,7 +130,6 @@ export default function Sidebar() {
       >
         <Menu size={18} />
       </button>
-      {/* New Chat Button - Emerges from sidebar button */}
       <button
         onClick={handleNewChat}
         className={`fixed top-4 z-50 w-10 h-10 bg-button border border-white/10 border-l-0 rounded-r-lg flex items-center justify-center text-white hover:bg-button/80 transition-all duration-300 ease-out ${
@@ -149,19 +145,16 @@ export default function Sidebar() {
         <Plus size={18} />
       </button>
 
-      {/* Sidebar */}
       <div 
         className={`fixed left-0 top-0 h-screen bg-sidebar border-r border-white/10 z-40 transition-transform duration-300 ease-in-out flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ width: '20%' }}
       >
-        {/* Logo - positioned to align with toggle button */}
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white font-bold">
           <Image src="/logo.jpg" alt="Logo" width={40} height={40} />
         </div>
 
-        {/* New Chat Button */}
         <div className="p-3 pt-16 flex-shrink-0">
           <button 
             onClick={handleNewChat}
@@ -172,7 +165,6 @@ export default function Sidebar() {
           </button>
         </div>
         
-        {/* Threads List - Scrollable and takes remaining space */}
         <div className="flex-1 overflow-y-auto px-4 min-h-0">
           <div className="text-white/60 text-xs uppercase font-semibold mb-3 px-2">
             Recent Chats
@@ -216,7 +208,6 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* User Section - Always at bottom */}
         <div className="p-4 border-t border-white/10 flex-shrink-0">
           <SignedOut>
             <button className="w-full py-2 px-4 rounded-lg text-white hover:bg-white/10">
@@ -241,7 +232,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Overlay for mobile */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/20 z-30 lg:hidden"
@@ -252,7 +242,6 @@ export default function Sidebar() {
   );
 }
 
-// Layout wrapper component
 export function MainContent({ children }: { children: React.ReactNode }) {
   const { isOpen } = useSidebar();
   

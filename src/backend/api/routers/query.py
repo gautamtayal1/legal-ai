@@ -1,7 +1,3 @@
-"""
-API endpoints for document query and retrieval functionality.
-Implements the retrieval API for Steps 12-14 from architecture.
-"""
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
@@ -27,7 +23,6 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 def _convert_search_results_to_dict(search_results):
-    """Helper function to convert SearchResult objects to dictionaries"""
     results_dict = []
     for result in search_results:
         results_dict.append({
@@ -42,7 +37,6 @@ def _convert_search_results_to_dict(search_results):
     return results_dict
 
 def _convert_similar_results_to_dict(search_results):
-    """Helper function to convert SearchResult objects to dictionaries for similar content"""
     results_dict = []
     for result in search_results:
         results_dict.append({
@@ -54,7 +48,6 @@ def _convert_similar_results_to_dict(search_results):
         })
     return results_dict
 
-# Pydantic models for request/response
 class QueryRequest(BaseModel):
     query: str = Field(..., description="The user's natural language query")
     document_ids: Optional[List[str]] = Field(None, description="Optional list of document IDs to search within")
@@ -98,20 +91,16 @@ class HealthResponse(BaseModel):
     search_service: Dict[str, Any]
     overall_health: bool
 
-# Global retrieval service instance
 _retrieval_service = None
 
 async def get_retrieval_service() -> RetrievalService:
-    """Get or create the retrieval service instance."""
     global _retrieval_service
     
     if _retrieval_service is None:
         try:
-            # Initialize services
             vector_service = VectorStorageService()
             elasticsearch_service = ElasticsearchService()
             
-            # Create retrieval service
             _retrieval_service = RetrievalService(
                 vector_service=vector_service,
                 elasticsearch_service=elasticsearch_service
@@ -131,24 +120,18 @@ async def ask_question(
     db: Session = Depends(get_db),
     retrieval_service: RetrievalService = Depends(get_retrieval_service)
 ):
-    """
-    Ask a natural language question about legal documents.
-    """
     try:
-        # Extract data from request
         query = None
         thread_id = None
         user_id = None
         
         if 'messages' in request:
-            # OpenAI format from useChat
             messages = request['messages']
             if messages:
                 query = messages[-1].get('content', '')
             thread_id = request.get('thread_id')
             user_id = request.get('user_id')
         elif 'query' in request:
-            # Direct query format
             query = request['query']
             thread_id = request.get('thread_id')
             user_id = request.get('user_id')
@@ -162,7 +145,6 @@ async def ask_question(
         if not user_id:
             raise HTTPException(status_code=400, detail="No user_id found in request")
         
-        # Verify thread exists and user has access
         thread = db.query(Thread).filter(
             Thread.id == thread_id,
             Thread.user_id == user_id
@@ -171,7 +153,6 @@ async def ask_question(
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
         
-        # Save user message to database
         user_message = Message(
             id=str(uuid.uuid4()),
             thread_id=thread_id,
@@ -184,7 +165,6 @@ async def ask_question(
         db.commit()
         db.refresh(user_message)
         
-        # Fetch document IDs for this thread
         documents = db.query(Document).filter(
             Document.thread_id == thread_id,
             Document.processing_status == ProcessingStatus.READY
@@ -199,28 +179,22 @@ async def ask_question(
         doc_ids = [str(doc.id) for doc in documents]
         logger.info(f"Found {len(documents)} ready documents for thread {thread_id}: {doc_ids}")
         
-        # Store assistant response for saving to DB
         assistant_response = ""
         
         async def generate_stream():
             nonlocal assistant_response
             try:
-                # Process the query first
                 processed_query = retrieval_service.query_processor.process_query(query)
                 
-                # Get search results
                 search_results = await retrieval_service._hybrid_search(processed_query, doc_ids)
                 logger.info(f"Retrieved {len(search_results)} search results for query: {query}")
                 
-                # Stream the answer generation - plain text for streamProtocol: 'text'
                 async for chunk in retrieval_service._generate_answer(processed_query, search_results):
                     if chunk:
                         assistant_response += chunk
                         yield chunk
-                        # Ensure immediate streaming
                         await asyncio.sleep(0)
                 
-                # Save assistant message to database after streaming completes
                 if assistant_response:
                     assistant_message = Message(
                         id=str(uuid.uuid4()),
@@ -263,23 +237,13 @@ async def update_retrieval_config(
     enable_reranking: bool = Query(True, description="Enable reciprocal rank fusion"),
     retrieval_service: RetrievalService = Depends(get_retrieval_service)
 ):
-    """
-    Update retrieval configuration parameters.
-    
-    This endpoint allows fine-tuning of the retrieval system:
-    - Adjust vector vs keyword search weights
-    - Set maximum result limits
-    - Enable/disable result reranking
-    """
     try:
-        # Validate weights
         if abs(vector_weight + keyword_weight - 1.0) > 0.01:
             raise HTTPException(
                 status_code=400,
                 detail="Vector weight and keyword weight must sum to 1.0"
             )
         
-        # Update configuration
         config = RetrievalConfig(
             vector_weight=vector_weight,
             keyword_weight=keyword_weight,

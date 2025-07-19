@@ -38,7 +38,6 @@ class TextExtractionService:
     def extract_batch(self, file_paths: List[Union[str, Path]]) -> List[ExtractionResult]:
         return [self.extract(fp) for fp in file_paths]
 
-# Default service instance
 _service = TextExtractionService()
 
 def extract_text(file_path: Union[str, Path]) -> ExtractionResult:

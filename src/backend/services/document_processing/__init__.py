@@ -20,24 +20,20 @@ from .search_engine import ElasticsearchService, ElasticsearchConfig
 from .retrieval import RetrievalService, RetrievalConfig
 
 __all__ = [
-    # Text extraction
     "TextExtractionService",
     "extract_text", 
     "extract_batch",
     "is_supported",
     "ExtractionResult",
     
-    # Embedding services
     "EmbeddingService",
     "EmbeddingConfig",
     "VectorStorageService", 
     "VectorStorageConfig",
     
-    # Search engine
     "ElasticsearchService",
     "ElasticsearchConfig",
     
-    # Retrieval services
     "RetrievalService",
     "RetrievalConfig"
 ] 

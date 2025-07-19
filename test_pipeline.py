@@ -4,16 +4,13 @@ from src.backend.services.document_pipeline import DocumentPipeline
 from src.backend.services.document_processing.chunking.base import ChunkingStrategy
 
 async def test_pipeline():
-    # You'll need to set your OpenAI API key
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         print("Please set OPENAI_API_KEY environment variable")
         return
     
-    # Create pipeline
     pipeline = DocumentPipeline(openai_api_key=api_key)
     
-    # Sample legal document
     sample_doc = {
         "id": "test_contract_001",
         "content": """
@@ -47,7 +44,6 @@ async def test_pipeline():
     if result.get("success"):
         print(f"Successfully processed {result['chunks_processed']} chunks")
         
-        # Test search
         print("\nTesting search...")
         search_results = await pipeline.search_documents(
             query="confidentiality agreement",
@@ -61,10 +57,8 @@ async def test_pipeline():
             print(f"Content: {result['content'][:100]}...")
             print(f"Metadata: {result['metadata']}")
     
-    # Show pipeline stats
     print(f"\nPipeline stats: {pipeline.get_pipeline_stats()}")
     
-    # List stored documents
     print(f"Documents in storage: {pipeline.list_documents()}")
 
 if __name__ == "__main__":

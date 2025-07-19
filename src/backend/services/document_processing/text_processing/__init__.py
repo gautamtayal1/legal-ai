@@ -35,7 +35,6 @@ class TextProcessingService:
         current_text = text
         processor_results = []
         
-        # Apply each processor in sequence
         for processor in self.processors:
             try:
                 result = processor.process(current_text)
@@ -82,7 +81,6 @@ class TextProcessingService:
         """Get list of processor names."""
         return [p.name for p in self.processors]
 
-# Default service instance
 _service = TextProcessingService()
 
 def process_text(text: str) -> ProcessingResult:
@@ -97,7 +95,6 @@ def get_available_processors() -> List[str]:
     """Get list of available processors."""
     return _service.get_processor_names()
 
-# Export main classes and functions
 __all__ = [
     'process_text', 
     'process_text_batch', 

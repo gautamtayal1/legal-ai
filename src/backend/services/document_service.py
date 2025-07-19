@@ -1,9 +1,3 @@
-"""
-Unified Document Service
-
-This service acts as the main orchestrator for document processing,
-connecting the API layer with the document processing pipeline.
-"""
 import logging
 import os
 from typing import Optional, Dict, Any
@@ -21,16 +15,11 @@ logger = logging.getLogger(__name__)
 
 class DocumentService:
     def __init__(self, openai_api_key: str):
-        """Initialize the document service with required dependencies."""
         self.pipeline = DocumentPipeline(
             openai_api_key=openai_api_key
         )
         
     async def process_document(self, document_id: int) -> bool:
-        """
-        Process a document asynchronously.
-        This would be the main entry point called by the API.
-        """
         try:
             logger.info(f"Starting processing for document {document_id}")
             db = next(get_db())
@@ -109,12 +98,11 @@ class DocumentService:
             return False
     
     async def _download_document(self, s3_url: str) -> Optional[bytes]:
-        """Download document content from S3."""
         try:
             if "//" in s3_url:
                 key_part = s3_url.split("//")[1]
                 if "/" in key_part:
-                    s3_key = "/".join(key_part.split("/")[1:])  # Remove bucket name
+                    s3_key = "/".join(key_part.split("/")[1:])
                 else:
                     logger.error(f"Cannot extract S3 key from URL: {s3_url}")
                     return None
@@ -127,7 +115,6 @@ class DocumentService:
             return None
     
     async def _extract_text(self, file_content: bytes, filename: str):
-        """Extract text from file content asynchronously."""
         import tempfile
         import aiofiles
         import asyncio
@@ -154,7 +141,6 @@ class DocumentService:
             
             result = await asyncio.to_thread(service.extract, file_path)
             
-            # Return the full ExtractionResult object
             return result
             
         finally:
@@ -164,16 +150,12 @@ class DocumentService:
                 pass
     
     def _update_document_error(self, db: Session, document: Document, error_message: str):
-        """
-        Update document with error status and message.
-        """
         document.processing_status = ProcessingStatus.FAILED
         document.error_message = error_message
         db.commit()
         logger.error(f"Document {document.id} processing failed: {error_message}")
     
     async def search_documents(self, query: str, user_id: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
-        """Search documents for a user."""
         filters = {"user_id": user_id}
         if thread_id:
             filters["thread_id"] = thread_id
@@ -181,18 +163,12 @@ class DocumentService:
         return await self.pipeline.search_documents(query, filters=filters)
     
     async def get_document_stats(self, document_id: str) -> Dict[str, Any]:
-        """Get processing statistics for a document."""
         return await self.pipeline.get_document_stats(document_id)
 
 def start_processing_background(document_id: int) -> bool:
-    """
-    Entry point for TRUE background processing.
-    This function will be called by the API and returns immediately.
-    """
     import threading
     
     def process_in_background():
-        """This runs in a separate thread."""
         try:
             openai_api_key = os.getenv("OPENAI_API_KEY")
             if not openai_api_key:

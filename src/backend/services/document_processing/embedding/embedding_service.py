@@ -21,7 +21,6 @@ class EmbeddingService:
         self.config = config or EmbeddingConfig()
         self.logger = logging.getLogger(__name__)
         
-        # Initialize LangChain OpenAI embeddings
         self.embeddings = OpenAIEmbeddings(
             openai_api_key=api_key,
             model=self.config.model,
@@ -33,7 +32,6 @@ class EmbeddingService:
     async def embed_text(self, text: str) -> List[float]:
         """Embed a single text using LangChain OpenAI embeddings"""
         try:
-            # LangChain embeddings are sync, but we can make them async-compatible
             loop = asyncio.get_event_loop()
             embedding = await loop.run_in_executor(None, self.embeddings.embed_query, text)
             return embedding
@@ -47,7 +45,6 @@ class EmbeddingService:
             return []
         
         try:
-            # Use LangChain's built-in batching
             loop = asyncio.get_event_loop()
             embeddings = await loop.run_in_executor(None, self.embeddings.embed_documents, texts)
             return embeddings
@@ -85,7 +82,6 @@ class EmbeddingService:
         if self.config.dimensions:
             return self.config.dimensions
         
-        # Default dimensions for OpenAI models
         model_dimensions = {
             "text-embedding-3-small": 1536,
             "text-embedding-3-large": 3072,

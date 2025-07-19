@@ -18,7 +18,6 @@ export const useChatSSE = () => {
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   
-  // Load existing messages when component mounts
   useEffect(() => {
     const loadMessages = async () => {
       if (!user?.id || !threadId) return;
@@ -29,7 +28,6 @@ export const useChatSSE = () => {
           `${process.env.NEXT_PUBLIC_API_URL}/api/messages/thread/${threadId}?user_id=${user.id}`
         );
         
-        // Transform messages to match useChat format
         const transformedMessages = response.data.map((msg: Message) => ({
           id: msg.id,
           content: msg.content,

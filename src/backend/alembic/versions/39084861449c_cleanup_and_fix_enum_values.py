@@ -12,7 +12,6 @@ import sqlalchemy as sa
 from sqlalchemy import text
 
 
-# revision identifiers, used by Alembic.
 revision: str = '39084861449c'
 down_revision: Union[str, Sequence[str], None] = 'ce5151184049'
 branch_labels: Union[str, Sequence[str], None] = None
@@ -21,11 +20,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Fix the enum by recreating it with only the correct lowercase values
     
     conn = op.get_bind()
     
-    # Step 1: Create a new enum type with correct values
     conn.execute(text("""
         CREATE TYPE processingstatus_new AS ENUM (
             'pending',
@@ -39,8 +36,6 @@ def upgrade() -> None:
         )
     """))
     
-    # Step 2: Update the documents table to use the new enum type
-    # First, we need to handle the mapping of old values to new values
     conn.execute(text("""
         ALTER TABLE documents 
         ALTER COLUMN processing_status TYPE processingstatus_new 
@@ -69,15 +64,11 @@ def upgrade() -> None:
         )
     """))
     
-    # Step 3: Drop the old enum type
     conn.execute(text("DROP TYPE processingstatus"))
     
-    # Step 4: Rename the new enum type to the original name
     conn.execute(text("ALTER TYPE processingstatus_new RENAME TO processingstatus"))
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    # This is complex to reverse, so we'll leave it as no-op
-    # In practice, you wouldn't want to downgrade this
     pass

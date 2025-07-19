@@ -11,7 +11,6 @@ from alembic import op
 import sqlalchemy as sa
 
 
-# revision identifiers, used by Alembic.
 revision: str = '84043afa3816'
 down_revision: Union[str, Sequence[str], None] = 'e9ff70812e0a'
 branch_labels: Union[str, Sequence[str], None] = None
@@ -20,7 +19,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create ProcessingStatus enum type
     processing_status_enum = sa.Enum(
         'PENDING', 'EXTRACTING', 'PROCESSING', 'CHUNKING', 
         'EMBEDDING', 'READY', 'FAILED', 
@@ -31,5 +29,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    # Drop ProcessingStatus enum type
     op.execute('DROP TYPE IF EXISTS processingstatus')

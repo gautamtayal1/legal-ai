@@ -51,19 +51,16 @@ class RetrievalService:
         self.config = config or RetrievalConfig()
         self.logger = logging.getLogger(__name__)
         
-        # Services
         self.vector_service = vector_service
         self.elasticsearch_service = elasticsearch_service
         self.query_processor = QueryProcessor()
         
-        # Initialize embedding service for query embedding
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
             
         self.embedding_service = EmbeddingService(openai_api_key)
         
-        # Initialize OpenAI client for answer generation
         openai.api_key = openai_api_key
         self.openai_client = openai.OpenAI(api_key=openai_api_key)
         
@@ -159,9 +156,8 @@ class RetrievalService:
             for chunk in response:
                 delta = chunk.choices[0].delta.content
                 if delta:
-                    # Add flush to ensure immediate streaming
                     yield delta
-                    await asyncio.sleep(0)  # Allow other tasks to run
+                    await asyncio.sleep(0)  
             
         except Exception as e:
             self.logger.error(f"Answer generation failed: {str(e)}")
@@ -176,7 +172,6 @@ class RetrievalService:
                 processed_query.processed_query
             )
             
-            # Always apply filters when document_ids are provided
             filters = None
             if document_ids:
                 if len(document_ids) == 1:
@@ -199,7 +194,6 @@ class RetrievalService:
             
             search_results = []
             
-            # Process vector results (filtering already done at search level)
             for result in vector_results:
                 search_result = SearchResult(
                     id=result.get("id", ""),
@@ -224,7 +218,6 @@ class RetrievalService:
                     )
                     del keyword_dict[search_result.id]
             
-            # Process remaining keyword results (filtering already done at search level)
             for keyword_result in keyword_dict.values():
                 keyword_score = keyword_result.get("score", 0.0)
                 normalized_keyword = min(1.0, keyword_score / 10.0) if keyword_score > 0 else 0.0

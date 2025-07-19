@@ -5,7 +5,7 @@ Simple PDF text extraction with OCR fallback.
 from pathlib import Path
 import PyPDF2
 import pdfplumber
-import fitz  # PyMuPDF
+import fitz  
 import subprocess
 import tempfile
 from PIL import Image
@@ -18,17 +18,14 @@ class PDFExtractor(TextExtractor):
         return file_path.suffix.lower() == '.pdf'
     
     def extract(self, file_path: Path) -> ExtractionResult:
-        # Try PyPDF2 first (fast)
         result = self._try_pypdf2(file_path)
         if result.text and len(result.text.strip()) > 50:
             return result
         
-        # Fallback to pdfplumber (better for tables)
         result = self._try_pdfplumber(file_path)
         if result.text and len(result.text.strip()) > 50:
             return result
         
-        # Final fallback to OCR (for scanned PDFs)
         return self._try_ocr(file_path)
     
     def _try_pypdf2(self, file_path: Path) -> ExtractionResult:
@@ -53,7 +50,6 @@ class PDFExtractor(TextExtractor):
                     if page.extract_text():
                         text_parts.append(page.extract_text())
                     
-                    # Extract tables
                     for table in page.extract_tables():
                         table_text = '\n'.join(' | '.join(row) for row in table if row)
                         text_parts.append(f"[TABLE]\n{table_text}\n[/TABLE]")
@@ -73,16 +69,13 @@ class PDFExtractor(TextExtractor):
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 
-                # Convert page to image
                 pix = page.get_pixmap()
                 img_data = pix.tobytes("png")
                 img = Image.open(io.BytesIO(img_data))
                 
-                # Save image to temp file and call tesseract directly
                 with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
                     img.save(tmp_file.name)
                     
-                    # Call tesseract command directly
                     try:
                         result = subprocess.run([
                             'tesseract', tmp_file.name, 'stdout'
@@ -92,9 +85,8 @@ class PDFExtractor(TextExtractor):
                         if page_text:
                             text_parts.append(page_text)
                     except subprocess.CalledProcessError:
-                        continue  # Skip this page if tesseract fails
+                        continue  
                     finally:
-                        # Clean up temp file
                         import os
                         try:
                             os.unlink(tmp_file.name)

@@ -17,7 +17,6 @@ router = APIRouter(
     tags=["clerk"],
 )
 
-# Fetch the signing secret from environment variables
 SIGNING_SECRET = os.getenv("CLERK_WEBHOOK_SIGNING_SECRET")
 if not SIGNING_SECRET:
     logging.warning("Environment variable CLERK_WEBHOOK_SIGNING_SECRET not set – Clerk webhook verification will fail.")
@@ -56,7 +55,6 @@ async def clerk_webhook_endpoint(request: Request):
     logging.info("✅ Clerk webhook verified (%s)", event_type)
     logging.debug("Webhook payload: %s", json.dumps(data))
 
-    # ------------------ Database sync ------------------ #
     session: Session = SessionLocal()
     try:
         if event_type == "user.created":
@@ -70,13 +68,11 @@ async def clerk_webhook_endpoint(request: Request):
             if email_addresses:
                 primary_email = email_addresses[0].get("email_address")
 
-            # Some tenants may disable email; fallback to placeholder to satisfy NOT NULL
             if primary_email is None:
                 primary_email = f"{user_id}@example.com"
 
             avatar_url = data.get("image_url") or data.get("profile_image_url")
 
-            # Timestamps are in ms per Clerk docs
             created_ms = data.get("created_at")
             created_dt = datetime.utcfromtimestamp(created_ms / 1000) if created_ms else None
 
@@ -87,11 +83,10 @@ async def clerk_webhook_endpoint(request: Request):
                 avatar_url=avatar_url,
                 created_at=created_dt,
             )
-            session.merge(user)  # insert or update
+            session.merge(user)  
             session.commit()
             logging.info("➡️  User %s inserted into DB", user_id)
 
-            # update timestamps if present
             upd_ms = data.get("updated_at")
             if upd_ms:
                 user.updated_at = datetime.utcfromtimestamp(upd_ms / 1000)

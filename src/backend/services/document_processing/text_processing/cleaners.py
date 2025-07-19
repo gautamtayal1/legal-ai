@@ -19,7 +19,6 @@ class WhitespaceNormalizer(TextProcessor):
         
         text = re.sub(r' +', ' ', text)
         
-        # Replace multiple newlines with double newline (preserve paragraph breaks)
         text = re.sub(r'\n\s*\n+', '\n\n', text)
         
         text = text.replace('\t', ' ')
@@ -45,14 +44,14 @@ class EncodingCleaner(TextProcessor):
         original_length = len(text)
         
         replacements = {
-            '\u00a0': ' ',  # Non-breaking space
-            '\u2018': "'",  # Left single quotation mark
-            '\u2019': "'",  # Right single quotation mark
-            '\u201c': '"',  # Left double quotation mark
-            '\u201d': '"',  # Right double quotation mark
-            '\u2013': '-',  # En dash
-            '\u2014': '--', # Em dash
-            '\u2026': '...', # Ellipsis
+            '\u00a0': ' ',  
+            '\u2018': "'",  
+            '\u2019': "'",  
+            '\u201c': '"',  
+            '\u201d': '"',  
+            '\u2013': '-',  
+            '\u2014': '--', 
+            '\u2026': '...', 
         }
         
         for old, new in replacements.items():
@@ -80,13 +79,10 @@ class LineBreakNormalizer(TextProcessor):
         
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         
-        # Handle hyphenated line breaks (word continues on next line)
         text = re.sub(r'-\s*\n\s*', '', text)
         
-        # Join lines that don't end with punctuation (likely broken mid-sentence)
         text = re.sub(r'(?<=[a-zA-Z])\n(?=[a-z])', ' ', text)
         
-        # Preserve intentional line breaks (after punctuation)
         text = re.sub(r'(?<=[.!?:;])\n', '\n', text)
         
         return ProcessingResult(
@@ -111,11 +107,9 @@ class BasicTextCleaner(TextProcessor):
         text = re.sub(r'[!]{2,}', '!', text)
         text = re.sub(r'[?]{2,}', '?', text)
         
-        # Clean up common OCR artifacts
-        text = re.sub(r'\b[il1|]+\b', 'I', text)  # Common OCR mistakes
-        text = re.sub(r'\b0\b', 'O', text)  # Zero to O
+        text = re.sub(r'\b[il1|]+\b', 'I', text)  
+        text = re.sub(r'\b0\b', 'O', text)  
         
-        # Remove page numbers and footers (simple patterns)
         text = re.sub(r'^\d+\s*$', '', text, flags=re.MULTILINE)
         text = re.sub(r'Page \d+ of \d+', '', text, flags=re.IGNORECASE)
         

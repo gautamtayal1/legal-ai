@@ -15,18 +15,8 @@ AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 S3_BUCKET = os.getenv("S3_BUCKET_NAME")
 
 async def upload_file(file_bytes: bytes, filename: str) -> Tuple[str, str]:
-    """Upload file bytes to S3 asynchronously.
-
-    Returns
-    -------
-    key: str
-        The object key used in S3.
-    url: str
-        The accessible URL to the object.
-    """
     session = aioboto3.Session()
     
-    # Create unique key
     unique_key = f"uploads/{uuid.uuid4()}_{filename}"
     
     async with session.client(
@@ -45,8 +35,6 @@ async def upload_file(file_bytes: bytes, filename: str) -> Tuple[str, str]:
 
 
 async def download_file(s3_key: str) -> bytes:
-    """Download file from S3 asynchronously.
-    """
     session = aioboto3.Session()
     
     async with session.client(

@@ -127,7 +127,6 @@ class ElasticsearchService:
                    document_ids: Optional[List[str]] = None,
                    filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Search text asynchronously"""
-        # Ensure index exists before searching
         await self._create_index()
             
         search_body = {
@@ -144,7 +143,6 @@ class ElasticsearchService:
             }
         }
         
-        # Handle document filtering
         filter_clauses = []
         
         if document_id:
@@ -155,7 +153,6 @@ class ElasticsearchService:
         if filters:
             for key, value in filters.items():
                 if key == "document_id":
-                    # Handle multiple document IDs from filters
                     if isinstance(value, dict) and "$in" in value:
                         filter_clauses.append({"terms": {key: value["$in"]}})
                     else:
@@ -296,7 +293,6 @@ class ElasticsearchService:
         except Exception:
             return False
 
-    # Sync wrappers for backward compatibility
     def index_chunks_sync(self, chunks: List[DocumentChunk]) -> bool:
         """Sync wrapper for backward compatibility"""
         return asyncio.run(self.index_chunks(chunks))

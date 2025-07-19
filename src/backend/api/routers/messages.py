@@ -20,8 +20,6 @@ class MessageCreate(BaseModel):
 
 @router.post("/")
 async def create_message(message_data: MessageCreate, db: Session = Depends(get_db)):
-    """Create a new message."""
-    # Verify thread exists and user has access
     thread = db.query(Thread).filter(
         Thread.id == message_data.thread_id,
         Thread.user_id == message_data.user_id
@@ -30,7 +28,6 @@ async def create_message(message_data: MessageCreate, db: Session = Depends(get_
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
     
-    # Create message
     message = Message(
         id=str(uuid.uuid4()),
         thread_id=message_data.thread_id,
@@ -51,8 +48,6 @@ async def get_messages(
     user_id: str = Query(...),
     db: Session = Depends(get_db)
 ):
-    """Get messages for a thread."""
-    # Verify user owns thread
     thread = db.query(Thread).filter(
         Thread.id == thread_id,
         Thread.user_id == user_id
@@ -61,7 +56,6 @@ async def get_messages(
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
     
-    # Get messages
     messages = db.query(Message).filter(
         Message.thread_id == thread_id
     ).order_by(Message.created_at.asc()).all()

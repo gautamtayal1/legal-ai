@@ -25,18 +25,14 @@ class VectorStorageService:
         self.config = config or VectorStorageConfig()
         self.logger = logging.getLogger(__name__)
         
-        # Connect to self-hosted ChromaDB
         self.chroma_client = chromadb.HttpClient(
             host=self.config.host,
             port=self.config.port
         )
         
-        # Use provided embedding function or create a default one
         if embedding_function is None:
-            # This will only work if OPENAI_API_KEY is set in environment
             embedding_function = OpenAIEmbeddings()
         
-        # Initialize LangChain Chroma with self-hosted client
         self.vectorstore = Chroma(
             client=self.chroma_client,
             collection_name=self.config.collection_name,
@@ -55,7 +51,6 @@ class VectorStorageService:
             for item in embedded_chunks:
                 chunk = item["chunk"]
                 
-                # Create LangChain Document
                 doc_metadata = {
                     "document_id": chunk.document_id,
                     "chunk_index": chunk.chunk_index,
@@ -72,10 +67,8 @@ class VectorStorageService:
                         "legal_context": str(chunk.legal_context)
                     })
                 
-                # Ensure metadata is JSON serializable
                 doc_metadata = self._ensure_json_serializable(doc_metadata)
                 
-                # Filter complex metadata for ChromaDB compatibility
                 doc_metadata = self._filter_chromadb_metadata(doc_metadata)
                 
                 doc = Document(
@@ -86,7 +79,6 @@ class VectorStorageService:
                 documents.append(doc)
                 ids.append(chunk.id)
             
-            # Add documents to vectorstore
             self.vectorstore.add_documents(documents, ids=ids)
             
             self.logger.info(f"Stored {len(embedded_chunks)} embeddings successfully")
@@ -105,32 +97,26 @@ class VectorStorageService:
         try:
             n_results = n_results or min(10, self.config.max_results)
             
-            # Build filter
             where_filter = {}
             if document_id:
                 where_filter["document_id"] = document_id
             if filters:
-                # Handle multiple document IDs filter
                 if "document_id" in filters:
                     doc_filter = filters["document_id"]
                     if isinstance(doc_filter, dict) and "$in" in doc_filter:
-                        # ChromaDB uses different syntax for multiple values
                         where_filter["document_id"] = {"$in": doc_filter["$in"]}
                     else:
                         where_filter["document_id"] = doc_filter
-                # Add other filters
                 for key, value in filters.items():
                     if key != "document_id":
                         where_filter[key] = value
             
-            # Use LangChain's similarity search by vector
             docs_with_scores = self.vectorstore.similarity_search_by_vector_with_relevance_scores(
                 embedding=query_embedding,
                 k=n_results,
                 filter=where_filter if where_filter else None
             )
             
-            # Convert to expected format
             search_results = []
             for doc, score in docs_with_scores:
                 search_results.append({
@@ -150,7 +136,6 @@ class VectorStorageService:
     async def delete_document(self, document_id: str) -> bool:
         """Delete document chunks using LangChain Chroma"""
         try:
-            # Get all chunks for this document
             all_docs = self.vectorstore.get(where={"document_id": document_id})
             
             if all_docs["ids"]:
@@ -182,7 +167,6 @@ class VectorStorageService:
     async def list_documents(self) -> List[str]:
         """List all document IDs using LangChain Chroma"""
         try:
-            # Get all documents with metadata
             all_docs = self.vectorstore.get(include=["metadatas"])
             
             document_ids = set()
@@ -196,7 +180,6 @@ class VectorStorageService:
             self.logger.error(f"Failed to list documents: {str(e)}")
             return []
 
-    # Sync wrappers for backward compatibility
     def store_embeddings_sync(self, embedded_chunks: List[Dict[str, Any]]) -> bool:
         return asyncio.run(self.store_embeddings(embedded_chunks))
     
@@ -218,7 +201,7 @@ class VectorStorageService:
         serializable_metadata = {}
         for key, value in metadata.items():
             try:
-                if hasattr(value, 'value'):  # Enum objects
+                if hasattr(value, 'value'):  
                     serializable_metadata[key] = value.value
                 elif isinstance(value, (str, int, float, bool, type(None))):
                     serializable_metadata[key] = value
@@ -239,10 +222,8 @@ class VectorStorageService:
         """Filter metadata to only include types supported by ChromaDB (str, int, float, bool, None)"""
         filtered_metadata = {}
         for key, value in metadata.items():
-            # ChromaDB only supports: str, int, float, bool, None
             if isinstance(value, (str, int, float, bool, type(None))):
                 filtered_metadata[key] = value
             else:
-                # Convert unsupported types to strings
                 filtered_metadata[key] = str(value)
         return filtered_metadata
