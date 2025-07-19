@@ -43,12 +43,9 @@ services:
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
     depends_on:
-      postgres:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      chromadb:
-        condition: service_healthy
+      - postgres
+      - elasticsearch
+      - chromadb
     volumes:
       - ./uploads:/app/uploads
     networks:
@@ -56,6 +53,7 @@ services:
     restart: unless-stopped
     command: >
       sh -c "
+        sleep 10 &&
         alembic upgrade head &&
         uvicorn main:app --host 0.0.0.0 --port 8000
       "
@@ -72,15 +70,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-inquire_user} -d ${POSTGRES_DB:-inquire_db}",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTICSEARCH_VERSION:-8.16.1}
@@ -100,12 +89,6 @@ services:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
       - app-network
-    healthcheck:
-      test:
-        ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   chromadb:
     image: chromadb/chroma:${CHROMADB_VERSION:-latest}
@@ -119,11 +102,6 @@ services:
       - chromadb_data:/chroma/chroma
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   adminer:
     image: adminer

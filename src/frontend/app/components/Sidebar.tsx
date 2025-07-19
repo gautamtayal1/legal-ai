@@ -152,7 +152,9 @@ export default function Sidebar() {
         style={{ width: '20%' }}
       >
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white font-bold">
-          <Image src="/logo.jpg" alt="Logo" width={40} height={40} />
+          <button onClick={() => router.push('/')} className="hover:opacity-80 transition-opacity">
+            <Image src="/logo.jpg" alt="Logo" width={40} height={40} />
+          </button>
         </div>
 
         <div className="p-3 pt-16 flex-shrink-0">
