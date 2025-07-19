@@ -6,9 +6,21 @@ import { useChatSSE } from "@/app/hooks/useChatSSE";
 import MessageFormatter from "./MessageFormatter";
 
 export default function MainChatArea() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChatSSE();
+  const { messages, input, handleInputChange, handleSubmit, isLoading, isLoadingMessages } = useChatSSE();
 
   const hasMessages = messages.length > 0;
+
+  // Show blank screen while loading messages
+  if (isLoadingMessages) {
+    return (
+      <>
+        <div className="fixed inset-0 bg-chat-area"></div>
+        <div className="w-full h-screen relative flex flex-col">
+          <div className="flex-1"></div>
+        </div>
+      </>
+    );
+  }
 
   if (hasMessages) {
     return (

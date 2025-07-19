@@ -18,8 +18,6 @@ class ThreadCreate(BaseModel):
     user_id: str
     title: str
 
-class ThreadUpdate(BaseModel):
-    title: str
 
 class ThreadAutoName(BaseModel):
     thread_id: str
@@ -60,21 +58,6 @@ async def get_thread_by_user_id(user_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No threads found for this user")
     return threads
 
-@router.put("/{thread_id}")
-async def update_thread(thread_id: str, thread_update: ThreadUpdate, user_id: str = Query(...), db: Session = Depends(get_db)):
-    """Update a thread's title."""
-    thread = db.query(Thread).filter(
-        Thread.id == thread_id,
-        Thread.user_id == user_id
-    ).first()
-    
-    if not thread:
-        raise HTTPException(status_code=404, detail="Thread not found")
-    
-    thread.title = thread_update.title
-    db.commit()
-    db.refresh(thread)
-    return thread
 
 @router.delete("/{thread_id}")
 async def delete_thread(thread_id: str, user_id: str = Query(...), db: Session = Depends(get_db)):

@@ -183,8 +183,8 @@ export default function ChatPage() {
             pollInterval = null;
             console.log('All documents are ready, stopped polling');
             
-            // Auto-name the thread if not already done
-            if (!hasAutoNamed) {
+            // Only auto-name if we're coming from the uploading flow
+            if (isUploading && !hasAutoNamed) {
               autoNameThread();
             }
           }
@@ -216,7 +216,7 @@ export default function ChatPage() {
         clearInterval(pollInterval);
       }
     };
-  }, [threadId, user?.id, hasAutoNamed]);
+  }, [threadId, user?.id]);
   
   const autoNameThread = async () => {
     if (!user?.id) return;
@@ -231,7 +231,10 @@ export default function ChatPage() {
         const threadsResponse = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/api/threads/${user.id}`
         );
-        setThreads(threadsResponse.data);
+        const sortedThreads = threadsResponse.data.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setThreads(sortedThreads);
         setHasAutoNamed(true);
         console.log('Thread auto-named:', response.data.new_name);
       }
