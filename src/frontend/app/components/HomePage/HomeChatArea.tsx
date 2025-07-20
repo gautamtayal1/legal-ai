@@ -28,7 +28,9 @@ export default function HomeChatArea() {
   }, []);
 
   const handleUploadClick = () => {
+    console.log('Upload button clicked');
     setIsModalOpen(true);
+    console.log('Modal should be open now');
   };
 
   const handleModalSubmit = async (files: UploadedFile[]) => {

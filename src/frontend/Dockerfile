@@ -8,7 +8,7 @@ RUN npm install -g pnpm
 COPY package*.json ./
 COPY pnpm-lock.yaml* ./
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 FROM node:18-alpine AS builder
 

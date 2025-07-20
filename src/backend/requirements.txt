@@ -38,8 +38,8 @@ bcrypt==4.3.0
 svix==1.69.0
 
 # Search and vector storage
-elasticsearch>=8.0.0
-elasticsearch[async]>=8.0.0
+elasticsearch==8.18.1
+elasticsearch[async]==8.18.1
 chromadb==1.0.15
 
 # AI and ML
