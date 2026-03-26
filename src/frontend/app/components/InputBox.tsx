@@ -23,16 +23,16 @@ const InputBox: React.FC<InputBoxProps> = ({ input, handleInputChange, handleSub
       <div className="w-full max-w-[90%] sm:max-w-[600px] md:max-w-[600px] lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1000px]">
         <div className="bg-input-area rounded-2xl border border-white/5 p-3">
           <form onSubmit={handleSubmit} className="flex items-center gap-3">
-            <input 
+            <input
               type="text"
               value={input}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Ask your document..." 
+              placeholder="Ask your document..."
               className="flex-1 p-2 rounded-lg bg-input-area text-gray-100 placeholder-gray-300 focus:outline-none text-[17px]"
               disabled={isLoading}
             />
-            
+
             <button
               type="submit"
               disabled={input.trim() === '' || isLoading}
@@ -42,6 +42,11 @@ const InputBox: React.FC<InputBoxProps> = ({ input, handleInputChange, handleSub
               <ArrowUp size={20} />
             </button>
           </form>
+          {input.length > 0 && (
+            <div className="flex justify-end mt-1 pr-1">
+              <span className="text-xs text-gray-500">{input.length}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
