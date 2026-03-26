@@ -141,5 +141,5 @@ jobs:
           push: false
           tags: legal-ai-frontend:ci
           build-args: |
-            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_dummy_key_for_ci
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk
             NEXT_PUBLIC_API_URL=http://localhost:8000
