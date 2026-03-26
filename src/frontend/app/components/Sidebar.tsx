@@ -21,6 +21,7 @@ interface SidebarContextType {
   threads: Thread[];
   setThreads: (threads: Thread[]) => void;
   deleteThread: (threadId: string) => void;
+  isLoadingThreads: boolean;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -36,6 +37,7 @@ export const useSidebar = () => {
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(true);
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [isLoadingThreads, setIsLoadingThreads] = useState(false);
   const { user } = useUser();
 
   const toggleSidebar = () => {
@@ -64,16 +66,19 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchThreads = async () => {
       if (!user?.id) return;
-      
+
+      setIsLoadingThreads(true);
       try {
         const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/threads/${user.id}`);
-        const sortedThreads = response.data.sort((a: Thread, b: Thread) => 
+        const sortedThreads = response.data.sort((a: Thread, b: Thread) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         setThreads(sortedThreads);
       } catch (error) {
         console.error('Failed to fetch threads:', error);
         setThreads([]);
+      } finally {
+        setIsLoadingThreads(false);
       }
     };
 
@@ -81,12 +86,13 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   return (
-    <SidebarContext.Provider value={{ 
-      isOpen, 
-      toggleSidebar, 
-      threads, 
-      setThreads, 
-      deleteThread 
+    <SidebarContext.Provider value={{
+      isOpen,
+      toggleSidebar,
+      threads,
+      setThreads,
+      deleteThread,
+      isLoadingThreads,
     }}>
       {children}
     </SidebarContext.Provider>
@@ -97,11 +103,12 @@ export default function Sidebar() {
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
-  const { 
-    isOpen, 
-    toggleSidebar, 
-    threads, 
-    deleteThread 
+  const {
+    isOpen,
+    toggleSidebar,
+    threads,
+    deleteThread,
+    isLoadingThreads,
   } = useSidebar();
 
   const handleNewChat = () => {
@@ -173,40 +180,48 @@ export default function Sidebar() {
           </div>
           
           <div className="space-y-1">
-            {threads.map((thread) => (
-              <div
-                key={thread.id}
-                onClick={() => handleThreadClick(thread.id)}
-                className={`w-full rounded-4xl transition-colors hover:bg-white/10 group cursor-pointer ${
-                  currentThreadId === thread.id ? 'bg-white/10' : ''
-                }`}
-              >
-                <div className="flex items-center gap-2 p-2.5">
-                  <div className="flex-1 min-w-0">
-                    <div
-                      className={`text-sm font-medium truncate ${
-                        currentThreadId === thread.id ? 'text-white' : 'text-white/80 group-hover:text-white'
-                      }`}
-                    >
-                      {(thread.title || 'New Chat').replace(/^"|"$/g, '')}
+            {isLoadingThreads ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-2.5 rounded-4xl animate-pulse">
+                  <div className="h-4 bg-white/10 rounded-md w-3/4"></div>
+                </div>
+              ))
+            ) : (
+              threads.map((thread) => (
+                <div
+                  key={thread.id}
+                  onClick={() => handleThreadClick(thread.id)}
+                  className={`w-full rounded-4xl transition-colors hover:bg-white/10 group cursor-pointer ${
+                    currentThreadId === thread.id ? 'bg-white/10' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2 p-2.5">
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className={`text-sm font-medium truncate ${
+                          currentThreadId === thread.id ? 'text-white' : 'text-white/80 group-hover:text-white'
+                        }`}
+                      >
+                        {(thread.title || 'New Chat').replace(/^"|"$/g, '')}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity thread-actions">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteThread(thread.id);
+                        }}
+                        className="p-1 hover:bg-white/20 rounded text-red-400 hover:text-red-300"
+                        aria-label="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity thread-actions">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteThread(thread.id);
-                      }}
-                      className="p-1 hover:bg-white/20 rounded text-red-400 hover:text-red-300"
-                      aria-label="Delete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
