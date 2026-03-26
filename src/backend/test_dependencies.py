@@ -61,7 +61,7 @@ def main():
         "openai",
         "langchain",
         "tiktoken",
-        "chromadb"
+        "pgvector"
     ]
     
     # Test all dependencies

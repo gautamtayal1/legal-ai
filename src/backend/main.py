@@ -100,9 +100,9 @@ async def health_check():
     
     try:
         if "vector_storage" in _services and _services["vector_storage"]:
-            health_checks["chromadb"] = "connected"
+            health_checks["pgvector"] = "connected"
         else:
-            health_checks["chromadb"] = "not_available"
+            health_checks["pgvector"] = "not_available"
             
         if "elasticsearch" in _services and _services["elasticsearch"]:
             es_health = await _services["elasticsearch"].health_check()

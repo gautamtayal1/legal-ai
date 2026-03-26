@@ -35,8 +35,13 @@ services:
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-inquire_user}:${POSTGRES_PASSWORD:-inquire_pass}@postgres:5432/${POSTGRES_DB:-inquire_db}
-      - CHROMADB_HOST=chromadb
-      - CHROMADB_PORT=8080
+      - POSTGRES_USER=${POSTGRES_USER:-inquire_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-inquire_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-inquire_db}
+      - POSTGRES_HOST=postgres
+      # pgvector extension must be enabled on the PostgreSQL instance:
+      # CREATE EXTENSION IF NOT EXISTS vector;
+      # This is handled automatically via the Alembic migration.
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - ELASTICSEARCH_PORT=9200
       - ELASTICSEARCH_HOST=elasticsearch
@@ -50,7 +55,6 @@ services:
     depends_on:
       - postgres
       - elasticsearch
-      - chromadb
     volumes:
       - ./uploads:/app/uploads
     networks:
@@ -95,21 +99,6 @@ services:
     networks:
       - app-network
 
-  chromadb:
-    image: chromadb/chroma:${CHROMADB_VERSION:-latest}
-    environment:
-      - CHROMADB_HOST=chromadb
-      - CHROMADB_PORT=8080
-      - PERSIST_DIRECTORY=/chroma/chroma
-      - CHROMA_SERVER_HTTP_PORT=8080 
-    ports:
-      - "8080:8080"
-    volumes:
-      - chromadb_data:/chroma/chroma
-    networks:
-      - app-network
-    command: ["run", "--host", "0.0.0.0", "--port", "8080"]
-
   adminer:
     image: adminer
     restart: always
@@ -127,4 +116,3 @@ networks:
 volumes:
   postgres_data:
   elasticsearch_data:
-  chromadb_data:
