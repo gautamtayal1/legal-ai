@@ -8,7 +8,6 @@ pymupdf==1.23.26
 
 pinecone-client==2.2.4
 weaviate-client==3.25.3
-chromadb==0.4.18
 qdrant-client==1.7.0
 
 elasticsearch==8.11.1
@@ -23,7 +22,7 @@ rq==1.15.1
 
 python-dateutil==2.8.2
 
-pgvector==0.2.4
+pgvector>=0.3.0
 psycopg2-binary==2.9.9
 
 structlog==23.2.0

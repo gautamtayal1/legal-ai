@@ -156,8 +156,8 @@ async def main():
         await test_mock_retrieval()
     else:
         logger.warning("⚠️ Services not healthy, skipping retrieval tests")
-        logger.info("To run full tests, ensure ChromaDB and Elasticsearch are running:")
-        logger.info("  - ChromaDB: docker run -p 8080:8000 chromadb/chroma")
+        logger.info("To run full tests, ensure PostgreSQL (with pgvector) and Elasticsearch are running:")
+        logger.info("  - PostgreSQL+pgvector: docker run -p 5432:5432 -e POSTGRES_PASSWORD=inquire_pass pgvector/pgvector:pg15")
         logger.info("  - Elasticsearch: docker run -p 9200:9200 elasticsearch:8.8.0")
     
     logger.info("=" * 50)

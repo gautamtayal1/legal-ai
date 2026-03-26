@@ -40,7 +40,7 @@ svix==1.69.0
 # Search and vector storage
 elasticsearch==8.18.1
 elasticsearch[async]==8.18.1
-chromadb==1.0.15
+pgvector>=0.3.0
 
 # AI and ML
 openai==1.93.0
@@ -48,7 +48,7 @@ langchain==0.3.26
 langchain-core==0.3.68
 langchain-text-splitters==0.3.8
 langchain-openai>=0.0.5
-langchain-chroma>=0.1.0
+langchain-postgres>=0.0.12
 tiktoken==0.9.0
 
 # Document processing
