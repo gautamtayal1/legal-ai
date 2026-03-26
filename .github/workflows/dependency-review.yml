@@ -16,3 +16,6 @@ jobs:
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
+        # Requires Dependency Graph to be enabled in repo Settings > Security Analysis.
+        # Until then, this step is non-blocking.
+        continue-on-error: true

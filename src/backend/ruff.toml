@@ -1,0 +1,11 @@
+[lint]
+# Ignore pre-existing violations in the codebase.
+# Remove rules from this list as they are fixed over time.
+ignore = [
+  "E402",  # module-level import not at top of file
+  "E722",  # bare except
+  "F401",  # imported but unused
+  "F541",  # f-string without placeholders
+  "F811",  # redefinition of unused name from import
+  "F841",  # local variable assigned but never used
+]
