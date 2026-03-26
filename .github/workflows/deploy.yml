@@ -1,0 +1,58 @@
+name: Deploy
+
+# Required secrets:
+#   SERVER_HOST      — IP or hostname of the deployment server
+#   SERVER_USER      — SSH user on the deployment server
+#   SERVER_SSH_KEY   — Private SSH key for authentication
+#   DEPLOY_PATH      — Absolute path on server (default: /opt/legal-ai)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    needs: []
+    # Only run after CI workflow passes on main
+    # To require CI, use workflow_run trigger instead:
+    # workflow_run:
+    #   workflows: ["CI"]
+    #   types: [completed]
+    #   branches: [main]
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/opt/legal-ai' }}"
+
+            echo "==> Pulling latest code"
+            cd "$DEPLOY_PATH"
+            git pull origin main
+
+            echo "==> Pulling latest base images"
+            docker compose pull
+
+            echo "==> Rebuilding and restarting services"
+            docker compose up -d --build
+
+            echo "==> Running database migrations"
+            docker compose exec -T backend alembic upgrade head
+
+            echo "==> Deploy complete"
+
+      - name: Report deploy status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "Deploy succeeded for commit ${{ github.sha }}"
+          else
+            echo "Deploy FAILED for commit ${{ github.sha }}"
+            exit 1
+          fi
